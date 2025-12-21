@@ -6,6 +6,7 @@ import '../widgets/control_panel.dart';
 import '../widgets/now_playing_card.dart';
 import '../widgets/playlist_panel.dart';
 import '../widgets/my_playlist_panel.dart';
+import '../config/app_config.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -293,7 +294,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Versione 1.1.0',
+              'Versione ${AppConfig.appVersion}',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
