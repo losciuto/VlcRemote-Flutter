@@ -2,7 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [1.3.0] - 2025-12-23
+
+### Performance & Efficiency
+- **Optimized Polling**: Reduced status update interval from 500ms to 1000ms (-50% network traffic)
+- **Command Delays**: Replaced hardcoded delays with named constants (100ms/300ms)
+- **Volume Debouncing**: Added 300ms debounce to prevent command flooding during slider interaction
+- **Seek Debouncing**: Implemented debounce mechanism for seek operations
+
+### Error Handling & Resilience
+- **Auto-Reconnect**: Exponential backoff strategy (1s → 2s → 4s → 8s → 16s, max 5 attempts)
+- **Retry Logic**: 3 retry attempts for status updates before triggering reconnect
+- **Improved Stability**: Status timer continues running during temporary failures
+
+### Code Quality
+- **Centralized Constants**: All magic numbers replaced with named constants in `AppConstants`
+- **Resource Cleanup**: Proper disposal of debounce timers
+- **Maintainability**: Single source of truth for all timing configurations
+
+### UX Enhancements
+- **Progress Feedback**: 10-step progress updates during MyPlaylist reconnection
+- **Better Messages**: Enhanced status messages for user awareness
+
 ## [1.2.1] - 2025-12-21
+
 
 - Documentation update and version synchronization.
 - Expanded English README with full features and configuration guide.

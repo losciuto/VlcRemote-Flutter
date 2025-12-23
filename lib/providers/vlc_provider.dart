@@ -6,6 +6,7 @@ import '../models/playlist_item.dart';
 import '../services/vlc_service.dart';
 import '../services/connection_service.dart';
 import '../services/my_playlist_service.dart';
+import '../constants/app_constants.dart';
 
 /// Provider per gestire lo stato dell'applicazione VLC Remote
 class VlcProvider with ChangeNotifier {
@@ -24,8 +25,16 @@ class VlcProvider with ChangeNotifier {
   String _myPlaylistMessage = '';
   List<Map<String, dynamic>> _proposedPlaylist = [];
   List<String> _pendingPlaylist = [];
+  bool _isReconnecting = false;
+  double _reconnectionProgress = 0.0;
 
   Timer? _statusUpdateTimer;
+  int _reconnectAttempts = 0;
+  int _statusUpdateRetries = 0;
+  
+  // Debouncing
+  Timer? _volumeDebounceTimer;
+  Timer? _seekDebounceTimer;
 
   // Getters
   VlcConnection? get currentConnection => _currentConnection;
@@ -36,12 +45,14 @@ class VlcProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   bool get isMyPlaylistBusy => _isMyPlaylistBusy;
-  String get myPlaylistMessage => _myPlaylistMessage; // Changed to non-nullable
+  String get myPlaylistMessage => _myPlaylistMessage;
   List<Map<String, dynamic>> get proposedPlaylist => _proposedPlaylist;
-  List<String> get pendingPlaylist => _pendingPlaylist; // New getter
+  List<String> get pendingPlaylist => _pendingPlaylist;
   bool get isMyPlaylistConfigured => 
       _currentConnection?.myPlaylistIp != null && 
       _currentConnection?.myPlaylistSecretKey != null;
+  bool get isReconnecting => _isReconnecting;
+  double get reconnectionProgress => _reconnectionProgress;
 
   VlcProvider() {
     _init();
@@ -112,28 +123,70 @@ class VlcProvider with ChangeNotifier {
   /// Avvia gli aggiornamenti periodici dello stato
   void _startStatusUpdates() {
     _stopStatusUpdates();
+    _statusUpdateRetries = 0;
 
-    // Aggiorna lo stato ogni 500ms
-    _statusUpdateTimer = Timer.periodic(Duration(milliseconds: 500), (timer) async {
-      if (!_vlcService.isConnected) {
-        timer.cancel();
-        _statusUpdateTimer = null;
-        return;
-      }
-      try {
-        await _updateStatus();
-      } catch (e) {
-        print('[VlcProvider] Errore aggiornamento stato: $e');
-        timer.cancel();
-        _statusUpdateTimer = null;
-      }
-    });
+    // Usa intervallo configurabile da costanti
+    _statusUpdateTimer = Timer.periodic(
+      Duration(milliseconds: AppConstants.statusRefreshMs), 
+      (timer) async {
+        if (!_vlcService.isConnected) {
+          // Tenta riconnessione automatica
+          await _attemptAutoReconnect();
+          return;
+        }
+        try {
+          await _updateStatus();
+          _statusUpdateRetries = 0; // Reset su successo
+        } catch (e) {
+          print('[VlcProvider] Errore aggiornamento stato: $e');
+          _statusUpdateRetries++;
+          
+          // Non fermare il timer, ma tenta retry
+          if (_statusUpdateRetries >= AppConstants.maxRetries) {
+            print('[VlcProvider] Troppi errori consecutivi, tento riconnessione');
+            await _attemptAutoReconnect();
+            _statusUpdateRetries = 0;
+          }
+        }
+      },
+    );
   }
 
   /// Ferma gli aggiornamenti periodici dello stato
   void _stopStatusUpdates() {
     _statusUpdateTimer?.cancel();
     _statusUpdateTimer = null;
+  }
+
+  /// Tenta riconnessione automatica con exponential backoff
+  Future<void> _attemptAutoReconnect() async {
+    if (_isReconnecting || _currentConnection == null) return;
+    
+    _isReconnecting = true;
+    notifyListeners();
+    
+    // Calcola delay con exponential backoff
+    final delay = (AppConstants.reconnectBackoffBaseMs * 
+        (1 << _reconnectAttempts.clamp(0, 5))).clamp(
+      AppConstants.reconnectBackoffBaseMs,
+      AppConstants.reconnectBackoffMaxMs,
+    );
+    
+    print('[VlcProvider] Tentativo riconnessione #${_reconnectAttempts + 1} tra ${delay}ms');
+    await Future.delayed(Duration(milliseconds: delay));
+    
+    final success = await connect(_currentConnection!);
+    
+    if (success) {
+      _reconnectAttempts = 0;
+      print('[VlcProvider] Riconnessione riuscita');
+    } else {
+      _reconnectAttempts++;
+      print('[VlcProvider] Riconnessione fallita, tentativo $_reconnectAttempts');
+    }
+    
+    _isReconnecting = false;
+    notifyListeners();
   }
 
   /// Aggiorna lo stato corrente di VLC
@@ -202,25 +255,25 @@ class VlcProvider with ChangeNotifier {
 
   Future<void> play() async {
     await _vlcService.play();
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(Duration(milliseconds: AppConstants.commandDelayShortMs));
     await _updateStatus();
   }
 
   Future<void> pause() async {
     await _vlcService.pause();
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(Duration(milliseconds: AppConstants.commandDelayShortMs));
     await _updateStatus();
   }
 
   Future<void> stop() async {
     await _vlcService.stop();
-    await Future.delayed(Duration(milliseconds: 200));
+    await Future.delayed(Duration(milliseconds: AppConstants.commandDelayShortMs));
     await _updateStatus();
   }
 
   Future<void> previous() async {
     await _vlcService.previous();
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(Duration(milliseconds: AppConstants.commandDelayLongMs));
     await _updateStatus();
   }
 
@@ -243,14 +296,20 @@ class VlcProvider with ChangeNotifier {
   }
 
   Future<void> setVolume(double volume) async {
-    // Normalizza da 0-100 a 0-256 per VLC
-    // Usiamo 256.0 come riferimento per il 100%
-    final vlcVolume = (volume * 256.0 / 100.0).round();
-    await _vlcService.setVolume(vlcVolume);
-    
     // Aggiornamento ottimistico locale per UI fluida
     _status = _status.copyWith(volume: volume.toInt());
     notifyListeners();
+    
+    // Debouncing: cancella timer precedente e crea nuovo
+    _volumeDebounceTimer?.cancel();
+    _volumeDebounceTimer = Timer(
+      Duration(milliseconds: AppConstants.volumeDebounceMs),
+      () async {
+        // Normalizza da 0-100 a 0-256 per VLC
+        final vlcVolume = (volume * AppConstants.vlcVolumeMax / 100.0).round();
+        await _vlcService.setVolume(vlcVolume);
+      },
+    );
   }
 
   Future<void> toggleFullscreen() async {
@@ -393,10 +452,19 @@ class VlcProvider with ChangeNotifier {
       // Se il comando è andato a buon fine (status 'success') e NON era una preview, riconnettiamoci
       if (status == 'success' && !isPreview) {
         _myPlaylistMessage = 'OK: $message - Riconnessione VLC...';
+        _reconnectionProgress = 0.0;
         notifyListeners();
 
-        // Attendi che VLC si avvii
-        await Future.delayed(Duration(seconds: 2)); 
+        // Attendi che VLC si avvii con progress feedback
+        const totalWait = AppConstants.myPlaylistReconnectDelayMs;
+        const steps = 10;
+        const stepDuration = totalWait ~/ steps;
+        
+        for (int i = 0; i < steps; i++) {
+          await Future.delayed(Duration(milliseconds: stepDuration));
+          _reconnectionProgress = (i + 1) / steps;
+          notifyListeners();
+        }
         
         if (_currentConnection != null) {
           await connect(_currentConnection!);
@@ -405,6 +473,8 @@ class VlcProvider with ChangeNotifier {
         // Aggiorna sempre la playlist dopo un comando MyPlaylist andato a buon fine
         await Future.delayed(const Duration(milliseconds: 500));
         await refreshPlaylist();
+        
+        _reconnectionProgress = 0.0;
       }
     } catch (e) {
       _myPlaylistMessage = 'ERRORE: $e';
@@ -439,6 +509,8 @@ class VlcProvider with ChangeNotifier {
   @override
   void dispose() {
     _stopStatusUpdates();
+    _volumeDebounceTimer?.cancel();
+    _seekDebounceTimer?.cancel();
     _vlcService.dispose();
     super.dispose();
   }

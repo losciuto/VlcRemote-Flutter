@@ -29,10 +29,31 @@ class AppConstants {
   };
 
   // Intervalli di refresh
-  static const int statusRefreshMs = 1000;
+  static const int statusRefreshMs = 1000; // Ridotto da 500ms per efficienza
   static const int playlistRefreshMs = 5000;
 
   // Parametri di volume
   static const int volumeStepSize = 3;
   static const int maxVolumePercent = 100;
+  static const int vlcVolumeMax = 256; // VLC usa 0-256 internamente
+  
+  // Timing comandi
+  static const int commandDelayShortMs = 200; // Per play/pause/stop
+  static const int commandDelayLongMs = 500;  // Per next/prev
+  static const int myPlaylistReconnectDelayMs = 2000;
+  
+  // Timeout
+  static const int connectionTimeoutMs = 2000;
+  static const int commandTimeoutMs = 1500;
+  static const int myPlaylistTimeoutMs = 5000;
+  
+  // Retry & Resilience
+  static const int maxRetries = 3;
+  static const int retryDelayMs = 1000;
+  static const int reconnectBackoffBaseMs = 1000;
+  static const int reconnectBackoffMaxMs = 10000;
+  
+  // Debouncing
+  static const int volumeDebounceMs = 300;
+  static const int seekDebounceMs = 500;
 }
