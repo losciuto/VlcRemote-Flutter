@@ -267,7 +267,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Row(
+                Row(
                   children: [
                     Expanded(
                       child: TextField(
@@ -315,7 +315,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Row(
+                Row(
                   children: [
                     Expanded(
                       child: TextField(
