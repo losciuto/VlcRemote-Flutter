@@ -219,7 +219,13 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
 
   void _showFilterDialog(BuildContext context, VlcProvider provider) {
     final genresController = TextEditingController();
+    final excludedGenresController = TextEditingController();
     final yearController = TextEditingController();
+    final excludedYearController = TextEditingController();
+    final actorsController = TextEditingController();
+    final excludedActorsController = TextEditingController();
+    final directorsController = TextEditingController();
+    final excludedDirectorsController = TextEditingController();
     final limitController = TextEditingController(text: '50');
     double minRating = 0.0;
 
@@ -229,9 +235,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
         builder: (context, setState) => AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.filter_list, color: Colors.blue),
+              Icon(Icons.filter_alt, color: Colors.blue),
               SizedBox(width: 12),
-              Text('Genera con Filtri'),
+              Text('Smart Playlist Filter'),
             ],
           ),
           content: SingleChildScrollView(
@@ -239,28 +245,104 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Filtri Avanzati', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
+                const Text('METADATI DA INCLUDERE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green)),
+                const SizedBox(height: 12),
                 TextField(
                   controller: genresController,
                   decoration: const InputDecoration(
-                    labelText: 'Generi (separati da virgola)',
+                    labelText: 'Generi',
                     hintText: 'Azione, Commedia',
+                    isDense: true,
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.category_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
                   controller: yearController,
                   decoration: const InputDecoration(
-                    labelText: 'Anni (separati da virgola)',
+                    labelText: 'Anni',
                     hintText: '2023, 2024',
+                    isDense: true,
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                const Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: actorsController,
+                        decoration: InputDecoration(
+                          labelText: 'Attori',
+                          hintText: 'Tom Cruise',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: directorsController,
+                        decoration: InputDecoration(
+                          labelText: 'Registi',
+                          hintText: 'Christopher Nolan',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('METADATI DA ESCLUDERE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.redAccent)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: excludedGenresController,
+                  decoration: const InputDecoration(
+                    labelText: 'Escludi Generi',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: excludedYearController,
+                  decoration: const InputDecoration(
+                    labelText: 'Escludi Anni',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: excludedActorsController,
+                        decoration: InputDecoration(
+                          labelText: 'Escludi Attori',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: excludedDirectorsController,
+                        decoration: InputDecoration(
+                          labelText: 'Escludi Registi',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('ALTRI PARAMETRI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueGrey)),
+                const SizedBox(height: 12),
                 const Text('Valutazione Minima:'),
                 Slider(
                   value: minRating,
@@ -275,8 +357,8 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   controller: limitController,
                   decoration: const InputDecoration(
                     labelText: 'Limite Risultati',
+                    isDense: true,
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.format_list_numbered),
                   ),
                   keyboardType: TextInputType.number,
                 ),
@@ -290,13 +372,27 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
             ),
             ElevatedButton(
               onPressed: () {
-                final genres = genresController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                final years = yearController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                List<String> split(String t) => t.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                
+                final genres = split(genresController.text);
+                final excludedGenres = split(excludedGenresController.text);
+                final years = split(yearController.text);
+                final excludedYears = split(excludedYearController.text);
+                final actors = split(actorsController.text);
+                final excludedActors = split(excludedActorsController.text);
+                final directors = split(directorsController.text);
+                final excludedDirectors = split(excludedDirectorsController.text);
                 final limit = int.tryParse(limitController.text);
 
                 provider.mpGenerateFiltered(
                   genres: genres.isEmpty ? null : genres,
+                  excludedGenres: excludedGenres.isEmpty ? null : excludedGenres,
                   years: years.isEmpty ? null : years,
+                  excludedYears: excludedYears.isEmpty ? null : excludedYears,
+                  actors: actors.isEmpty ? null : actors,
+                  excludedActors: excludedActors.isEmpty ? null : excludedActors,
+                  directors: directors.isEmpty ? null : directors,
+                  excludedDirectors: excludedDirectors.isEmpty ? null : excludedDirectors,
                   minRating: minRating > 0 ? minRating : null,
                   limit: limit,
                   preview: _previewMode,
@@ -312,7 +408,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
   }
 
   void _showPreviewDialog(BuildContext context, VlcProvider provider) {
-    final titles = List<String>.from(provider.pendingPlaylist);
+    final items = List<Map<String, dynamic>>.from(provider.pendingPlaylist);
     provider.clearPendingPlaylist(); // Clear immediately so it doesn't loop
 
     showDialog(
@@ -323,21 +419,28 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
           children: [
             const Icon(Icons.playlist_play, size: 48, color: Colors.blue),
             const SizedBox(height: 8),
-            Text('Anteprima Playlist (${titles.length})'),
+            Text('Anteprima Playlist (${items.length})'),
           ],
         ),
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
-          child: titles.isEmpty 
+          child: items.isEmpty 
               ? const Center(child: Text('Nessun video trovato con questi filtri.'))
               : ListView.builder(
-                  itemCount: titles.length,
-                  itemBuilder: (context, index) => ListTile(
-                    leading: CircleAvatar(child: Text('${index + 1}')),
-                    title: Text(titles[index]),
-                    dense: true,
-                  ),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSeries = item['isSeries'] == 1 || item['isSeries'] == true;
+                    return ListTile(
+                      leading: isSeries 
+                          ? const Icon(Icons.tv, color: Colors.blue, size: 20)
+                          : CircleAvatar(child: Text('${index + 1}')),
+                      title: Text(item['title'] ?? ''),
+                      trailing: isSeries ? const Badge(label: Text('SERIE')) : null,
+                      dense: true,
+                    );
+                  },
                 ),
         ),
         actions: [
@@ -345,7 +448,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Annulla'),
           ),
-          if (titles.isNotEmpty)
+          if (items.isNotEmpty)
             ElevatedButton.icon(
               onPressed: () {
                 provider.mpPlay();

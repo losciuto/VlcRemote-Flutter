@@ -24,7 +24,7 @@ class VlcProvider with ChangeNotifier {
   bool _isMyPlaylistBusy = false;
   String _myPlaylistMessage = '';
   List<Map<String, dynamic>> _proposedPlaylist = [];
-  List<String> _pendingPlaylist = [];
+  List<Map<String, dynamic>> _pendingPlaylist = [];
   bool _isReconnecting = false;
   double _reconnectionProgress = 0.0;
 
@@ -47,7 +47,7 @@ class VlcProvider with ChangeNotifier {
   bool get isMyPlaylistBusy => _isMyPlaylistBusy;
   String get myPlaylistMessage => _myPlaylistMessage;
   List<Map<String, dynamic>> get proposedPlaylist => _proposedPlaylist;
-  List<String> get pendingPlaylist => _pendingPlaylist;
+  List<Map<String, dynamic>> get pendingPlaylist => _pendingPlaylist;
   bool get isMyPlaylistConfigured => 
       _currentConnection?.myPlaylistIp != null && 
       _currentConnection?.myPlaylistSecretKey != null;
@@ -384,6 +384,10 @@ class VlcProvider with ChangeNotifier {
     double? minRating,
     List<String>? actors,
     List<String>? directors,
+    List<String>? excludedGenres,
+    List<String>? excludedYears,
+    List<String>? excludedActors,
+    List<String>? excludedDirectors,
     int? limit,
     bool preview = false,
   }) async {
@@ -397,6 +401,10 @@ class VlcProvider with ChangeNotifier {
         minRating: minRating,
         actors: actors,
         directors: directors,
+        excludedGenres: excludedGenres,
+        excludedYears: excludedYears,
+        excludedActors: excludedActors,
+        excludedDirectors: excludedDirectors,
         limit: limit,
         preview: preview,
       ),
@@ -441,10 +449,10 @@ class VlcProvider with ChangeNotifier {
       
       _myPlaylistMessage = message;
       
-      // Se è una preview, salviamo la lista dei titoli
+      // Se è una preview, salviamo la lista degli elementi (ora includono isSeries)
       if (isPreview && result['playlist'] != null) {
         final list = result['playlist'] as List;
-        _pendingPlaylist = list.map((item) => item['title'] as String).toList();
+        _pendingPlaylist = list.cast<Map<String, dynamic>>();
       } else {
         _pendingPlaylist = [];
       }

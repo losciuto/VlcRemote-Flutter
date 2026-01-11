@@ -18,7 +18,11 @@ Un'applicazione Flutter cross-platform per controllare VLC Media Player da remot
 
 ## 📱 Screenshot
 
-*Coming soon...*
+<p align="center">
+  <img src="assets/screenshots/home.svg" width="200" alt="Home Screen" />
+  <img src="assets/screenshots/controls.svg" width="200" alt="Controls Screen" />
+  <img src="assets/screenshots/playlist.svg" width="200" alt="Playlist Screen" />
+</p>
 
 ## ✨ Caratteristiche
 
@@ -329,7 +333,7 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file `LICENSE` per i de
 **losciuto**
 
 - Versione originale Android: [losciuto/vlcremote](https://github.com/losciuto/vlcremote)
-- Versione Flutter: 1.3.1 (Dicembre 2025)
+- Versione Flutter: 2.1.0 (Gennaio 2026)
 
 ---
 

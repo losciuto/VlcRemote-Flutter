@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.1.0] - 2026-01-11
+
+### MyPlaylist Synchronization (v3.0.0)
+- **Exclusion Filters**: Added support for excluded genres and years in smart playlist generation.
+- **Actor & Director Filters**: Added new input fields for including/excluding specific actors and directors.
+- **Rich Metadata Preview**: Preview playlist now displays series indicators (TV icon and "SERIE" badge) to match MyPlaylist v3.0.0.
+- **Protocol Extension**: Updated communication protocol to handle complex metadata and advanced filter arguments.
+
 ## [1.3.0] - 2025-12-23
 
 ### Performance & Efficiency
