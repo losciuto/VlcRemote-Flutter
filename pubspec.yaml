@@ -2,7 +2,7 @@ name: vlc_remote_flutter
 description: "Telecomando remoto per VLC Media Player - Versione Flutter migliorata"
 publish_to: "none"
 
-version: 2.1.1+1
+version: 2.2.0+1
 
 environment:
   sdk: ^3.10.3

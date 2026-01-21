@@ -3,7 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 
-## [2.1.0] - 2026-01-11
+## [2.2.0] - 2026-01-21
+
+### Synchronization
+- **MyPlaylist v3.4.0 Compatibility**: Fully synchronized protocol to support the latest playlist generation logic.
+- **Improved Series Support**: Enhanced metadata handling for TV series and episodes, including better badge rendering in previews.
+
+### Maintenance
+- Updated internal protocol definitions for improved stability during remote control sessions.
+- General performance improvements and documentation synchronization.
+
 
 ### MyPlaylist Synchronization (v3.0.0)
 - **Exclusion Filters**: Added support for excluded genres and years in smart playlist generation.
