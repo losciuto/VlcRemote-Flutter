@@ -104,10 +104,10 @@ class HomeScreen extends StatelessWidget {
       mpColor = Colors.orange;
     } else if (provider.isMyPlaylistConfigured) {
       if (provider.lastMpStatus == 'SUCCESS') {
-        mpStatusText = 'PRONTO';
+        mpStatusText = 'CONNESSO';
         mpColor = Colors.blue;
       } else if (provider.lastMpStatus == 'ERROR') {
-        mpStatusText = 'FALLITO';
+        mpStatusText = 'NON CONNESSO';
         mpColor = Colors.red;
       } else {
         mpStatusText = 'NON TESTATO';
