@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/vlc_connection.dart';
 import '../models/vlc_status.dart';
@@ -23,6 +24,7 @@ class VlcProvider with ChangeNotifier {
   // MyPlaylist state
   bool _isMyPlaylistBusy = false;
   String _myPlaylistMessage = '';
+  String _lastMpStatus = 'UNKNOWN'; // UNKNOWN, SUCCESS, ERROR
   List<Map<String, dynamic>> _proposedPlaylist = [];
   List<Map<String, dynamic>> _pendingPlaylist = [];
   bool _isReconnecting = false;
@@ -46,6 +48,7 @@ class VlcProvider with ChangeNotifier {
 
   bool get isMyPlaylistBusy => _isMyPlaylistBusy;
   String get myPlaylistMessage => _myPlaylistMessage;
+  String get lastMpStatus => _lastMpStatus;
   List<Map<String, dynamic>> get proposedPlaylist => _proposedPlaylist;
   List<Map<String, dynamic>> get pendingPlaylist => _pendingPlaylist;
   bool get isMyPlaylistConfigured => 
@@ -125,25 +128,34 @@ class VlcProvider with ChangeNotifier {
     _stopStatusUpdates();
     _statusUpdateRetries = 0;
 
-    // Usa intervallo configurabile da costanti
     _statusUpdateTimer = Timer.periodic(
-      Duration(milliseconds: AppConstants.statusRefreshMs), 
+      Duration(milliseconds: AppConstants.statusRefreshMs),
       (timer) async {
         if (!_vlcService.isConnected) {
-          // Tenta riconnessione automatica
+          // Se non siamo connessi, tentiamo la riconnessione.
+          // Se abbiamo fallito troppe volte, fermiamo gli aggiornamenti per risparmiare risorse.
+          if (_reconnectAttempts >= AppConstants.maxRetries) {
+            print('[VlcProvider] Riconnessione fallita troppe volte, fermo il timer.');
+            _stopStatusUpdates();
+            return;
+          }
           await _attemptAutoReconnect();
           return;
         }
+
         try {
           await _updateStatus();
+          // Ogni 5 iterazioni (circa 5 secondi), controlla anche MyPlaylist
+          if (timer.tick % 5 == 0) {
+            await _probeMyPlaylist();
+          }
           _statusUpdateRetries = 0; // Reset su successo
         } catch (e) {
           print('[VlcProvider] Errore aggiornamento stato: $e');
           _statusUpdateRetries++;
           
-          // Non fermare il timer, ma tenta retry
           if (_statusUpdateRetries >= AppConstants.maxRetries) {
-            print('[VlcProvider] Troppi errori consecutivi, tento riconnessione');
+            print('[VlcProvider] Troppi errori consecutivi, tento riconnessione.');
             await _attemptAutoReconnect();
             _statusUpdateRetries = 0;
           }
@@ -434,6 +446,7 @@ class VlcProvider with ChangeNotifier {
   }) async {
     if (!isMyPlaylistConfigured) {
       _myPlaylistMessage = 'MyPlaylist non configurato';
+      _lastMpStatus = 'UNKNOWN';
       notifyListeners();
       return;
     }
@@ -448,6 +461,7 @@ class VlcProvider with ChangeNotifier {
       final message = result['message'] as String? ?? 'Nessuna risposta dal server';
       
       _myPlaylistMessage = message;
+      _lastMpStatus = (status == 'success') ? 'SUCCESS' : 'ERROR';
       
       // Se è una preview, salviamo la lista degli elementi (ora includono isSeries)
       if (isPreview && result['playlist'] != null) {
@@ -486,9 +500,34 @@ class VlcProvider with ChangeNotifier {
       }
     } catch (e) {
       _myPlaylistMessage = 'ERRORE: $e';
+      _lastMpStatus = 'ERROR';
     } finally {
       _isMyPlaylistBusy = false;
       notifyListeners();
+    }
+  }
+
+  /// Verifica passivamente se il server MyPlaylist è raggiungibile
+  Future<void> _probeMyPlaylist() async {
+    if (!isMyPlaylistConfigured || _isMyPlaylistBusy) return;
+
+    try {
+      final socket = await Socket.connect(
+        _currentConnection!.myPlaylistIp!,
+        _currentConnection!.myPlaylistPort ?? 8080,
+        timeout: const Duration(seconds: 1),
+      );
+      socket.destroy();
+      
+      if (_lastMpStatus != 'SUCCESS') {
+        _lastMpStatus = 'SUCCESS';
+        notifyListeners();
+      }
+    } catch (e) {
+      if (_lastMpStatus != 'ERROR') {
+        _lastMpStatus = 'ERROR';
+        notifyListeners();
+      }
     }
   }
 

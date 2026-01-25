@@ -61,13 +61,13 @@ class MyPlaylistService {
       socket.add(buffer);
       await socket.flush();
 
-      // 7. Lettura risposta (formato JSON)
+      // 7. Lettura risposta (formato JSON) - Accumulo multi-chunk
+      final responseBuffer = StringBuffer();
       final responseCompleter = Completer<String>();
-      socket.listen(
+      
+      socket.cast<List<int>>().transform(utf8.decoder).listen(
         (data) {
-          if (!responseCompleter.isCompleted) {
-            responseCompleter.complete(utf8.decode(data).trim());
-          }
+          responseBuffer.write(data);
         },
         onError: (e) {
           if (!responseCompleter.isCompleted) {
@@ -76,13 +76,14 @@ class MyPlaylistService {
         },
         onDone: () {
           if (!responseCompleter.isCompleted) {
-            responseCompleter.completeError('Connection closed');
+            responseCompleter.complete(responseBuffer.toString().trim());
           }
         },
+        cancelOnError: true,
       );
 
       final rawResult = await responseCompleter.future.timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 10), // Timeout leggermente più lungo per risposte pesanti
       );
 
       return jsonDecode(rawResult) as Map<String, dynamic>;

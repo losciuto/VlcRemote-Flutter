@@ -112,26 +112,32 @@ class VlcService {
     try {
       _isConnected = false;
 
-      // Cancella subscription
-      try {
-        await _socketSubscription?.cancel();
-      } catch (e) {
-        print('[VlcService] Errore cancellazione subscription: $e');
+      // Cancella la sottoscrizione allo stream del socket
+      if (_socketSubscription != null) {
+        try {
+          await _socketSubscription!.cancel();
+        } catch (e) {
+          print('[VlcService] Errore durante la cancellazione della sottoscrizione: $e');
+        }
+        _socketSubscription = null;
       }
-      _socketSubscription = null;
 
-      // Chiudi socket
-      try {
-        await _socket?.close();
-      } catch (e) {
-        print('[VlcService] Errore chiusura socket: $e');
+      // Chiudi e distruggi il socket
+      if (_socket != null) {
+        try {
+          // destroy() è più aggressivo di close() e assicura la chiusura immediata
+          _socket!.destroy(); 
+        } catch (e) {
+          print('[VlcService] Errore durante la distruzione del socket: $e');
+        }
+        _socket = null;
       }
-      _socket = null;
 
       _currentHost = null;
       _currentPort = null;
+      print('[VlcService] Disconnesso con successo.');
     } catch (e) {
-      print('[VlcService] Errore durante la disconnessione: $e');
+      print('[VlcService] Errore critico durante la disconnessione: $e');
     }
   }
 

@@ -58,121 +58,15 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Consumer<VlcProvider>(
         builder: (context, provider, _) {
-          if (provider.isConnecting) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Connessione in corso...'),
-                ],
+          return Column(
+            children: [
+              // Barra di Stato Globale (Avvisi di Collegamento)
+              _buildStatusBar(context, provider),
+              
+              Expanded(
+                child: _buildMainContent(context, provider),
               ),
-            );
-          }
-
-          if (!provider.isConnected) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.cloud_off,
-                    size: 80,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Non connesso a VLC',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tocca l\'icona di connessione per iniziare',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () => _showConnectionDialog(context),
-                    icon: const Icon(Icons.link),
-                    label: const Text('Connetti a VLC'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
-                  if (provider.errorMessage != null) ...[
-                    const SizedBox(height: 24),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 32),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.red),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              provider.errorMessage!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Card "Now Playing"
-                const NowPlayingCard(),
-                const SizedBox(height: 16),
-                
-                // Pannello di controllo VLC
-                const ControlPanel(),
-                const SizedBox(height: 24),
-
-                // Bottone "Smart Actions"
-                ElevatedButton.icon(
-                  onPressed: () => _showSmartActionsSheet(context),
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Smart Actions'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Bottone "Apri Playlist"
-                ElevatedButton.icon(
-                  onPressed: () => _showPlaylistSheet(context),
-                  icon: const Icon(Icons.queue_music),
-                  label: const Text('Apri Playlist VLC'),
-                  style: ElevatedButton.styleFrom(
-                   padding: const EdgeInsets.symmetric(vertical: 16),
-                   textStyle: const TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
-            ),
+            ],
           );
         },
       ),
@@ -186,6 +80,236 @@ class HomeScreen extends StatelessWidget {
             child: const Icon(Icons.refresh),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildStatusBar(BuildContext context, VlcProvider provider) {
+    // Definizione stati VLC
+    String vlcStatusText = 'DISCONNESSO';
+    Color vlcColor = Colors.red;
+    if (provider.isConnecting) {
+      vlcStatusText = 'TENTATIVO...';
+      vlcColor = Colors.orange;
+    } else if (provider.isConnected) {
+      vlcStatusText = 'COLLEGATO';
+      vlcColor = Colors.green;
+    }
+
+    // Definizione stati MyPlaylist
+    String mpStatusText = 'NON CONFIG.';
+    Color mpColor = Colors.grey;
+    if (provider.isMyPlaylistBusy) {
+      mpStatusText = 'INVIO...';
+      mpColor = Colors.orange;
+    } else if (provider.isMyPlaylistConfigured) {
+      if (provider.lastMpStatus == 'SUCCESS') {
+        mpStatusText = 'PRONTO';
+        mpColor = Colors.blue;
+      } else if (provider.lastMpStatus == 'ERROR') {
+        mpStatusText = 'FALLITO';
+        mpColor = Colors.red;
+      } else {
+        mpStatusText = 'NON TESTATO';
+        mpColor = Colors.orange.withValues(alpha: 0.7);
+      }
+    }
+
+    final String vlcIp = provider.currentConnection?.ipAddress ?? '---';
+    final String mpIp = provider.currentConnection?.myPlaylistIp ?? '---';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
+        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _buildStatusItem(
+                context,
+                'VLC',
+                vlcStatusText,
+                vlcColor,
+                Icons.link,
+                vlcIp,
+              ),
+              const SizedBox(width: 12),
+              _buildStatusItem(
+                context,
+                'MP',
+                mpStatusText,
+                mpColor,
+                Icons.playlist_add_check,
+                mpIp,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusItem(BuildContext context, String label, String status, Color color, IconData icon, String ip) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(
+              '$label: ',
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+            ),
+            Flexible(
+              child: Text(
+                status,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              ip,
+              style: TextStyle(fontSize: 8, color: Colors.grey[600], fontFamily: 'monospace'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context, VlcProvider provider) {
+    if (provider.isConnecting) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Connessione in corso...'),
+          ],
+        ),
+      );
+    }
+
+    if (!provider.isConnected) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.cloud_off,
+                size: 80,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Non connesso a VLC',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tocca l\'icona di connessione in alto a destra\no seleziona un server salvato.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () => _showConnectionDialog(context),
+                icon: const Icon(Icons.link),
+                label: const Text('Gestione Server VLC'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                ),
+              ),
+              if (provider.errorMessage != null) ...[
+                const SizedBox(height: 24),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          provider.errorMessage!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Card "Now Playing"
+          const NowPlayingCard(),
+          const SizedBox(height: 16),
+          
+          // Pannello di controllo VLC
+          const ControlPanel(),
+          const SizedBox(height: 24),
+
+          // Bottone "Smart Actions"
+          ElevatedButton.icon(
+            onPressed: () => _showSmartActionsSheet(context),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Smart Actions'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Bottone "Apri Playlist"
+          ElevatedButton.icon(
+            onPressed: () => _showPlaylistSheet(context),
+            icon: const Icon(Icons.queue_music),
+            label: const Text('Apri Playlist VLC'),
+            style: ElevatedButton.styleFrom(
+             padding: const EdgeInsets.symmetric(vertical: 16),
+             textStyle: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -218,7 +342,7 @@ class HomeScreen extends StatelessWidget {
   void _showPlaylistSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Permette al foglio di espandersi
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -231,7 +355,6 @@ class HomeScreen extends StatelessWidget {
           builder: (context, scrollController) {
             return Column(
               children: [
-                // Maniglia per trascinare
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 12),
                   width: 40,
@@ -241,7 +364,6 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                // Titolo opzionale
                 const Padding(
                   padding: EdgeInsets.only(bottom: 8.0),
                   child: Text(
@@ -252,7 +374,7 @@ class HomeScreen extends StatelessWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     controller: scrollController,
-                    child: const PlaylistPanel(), // PlaylistPanel riutilizzato
+                    child: const PlaylistPanel(),
                   ),
                 ),
               ],
@@ -311,7 +433,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Versione Flutter migliorata - Dicembre 2025',
+              'Versione Flutter migliorata - Gennaio 2026',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),

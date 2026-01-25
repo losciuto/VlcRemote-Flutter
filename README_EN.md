@@ -233,7 +233,7 @@ This project is released under the MIT License. See `LICENSE` for details.
 
 ## 👨‍💻 Author
 **losciuto**
-- Version: 2.2.0 (January 2026)
+- Version: 2.3.0 (January 2026)
 
 ---
 

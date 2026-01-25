@@ -11,6 +11,50 @@ class MyPlaylistPanel extends StatefulWidget {
 
 class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
   bool _previewMode = true;
+  bool _wasBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Aggiungi un listener per monitorare il completamento delle attività MyPlaylist
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<VlcProvider>();
+      provider.addListener(_onProviderChange);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Rimuovi il listener per evitare perdite di memoria
+    try {
+      final provider = context.read<VlcProvider>();
+      provider.removeListener(_onProviderChange);
+    } catch (_) {}
+    super.dispose();
+  }
+
+  void _onProviderChange() {
+    if (!mounted) return;
+    final provider = context.read<VlcProvider>();
+    
+    // Rileva quando il server ha finito di elaborare (da busy a non busy)
+    if (_wasBusy && !provider.isMyPlaylistBusy) {
+      if (provider.myPlaylistMessage.isNotEmpty) {
+        final isError = provider.myPlaylistMessage.toLowerCase().contains('errore') || 
+                        provider.myPlaylistMessage.toLowerCase().contains('failed');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.myPlaylistMessage),
+            backgroundColor: isError ? Colors.red : Colors.blue,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+    _wasBusy = provider.isMyPlaylistBusy;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +270,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
     final excludedActorsController = TextEditingController();
     final directorsController = TextEditingController();
     final excludedDirectorsController = TextEditingController();
-    final limitController = TextEditingController(text: '50');
+    final limitController = TextEditingController(text: '10');
     double minRating = 0.0;
 
     showDialog(

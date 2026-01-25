@@ -80,11 +80,16 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   size: 28,
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Connessione VLC',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                const Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Gestione Server VLC',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
-                const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.of(context).pop(),
@@ -108,7 +113,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Nessuna connessione salvata',
+                          'Nessun server salvato',
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                       ],
@@ -136,7 +141,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   });
                 },
                 icon: const Icon(Icons.add),
-                label: const Text('Nuova Connessione'),
+                label: const Text('Nuovo Server VLC'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -153,7 +158,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
-                            labelText: 'Nome Connessione',
+                            labelText: 'Nome Server',
                             hintText: 'es. VLC Casa',
                             prefixIcon: const Icon(Icons.label_outline),
                             border: OutlineInputBorder(
@@ -320,56 +325,106 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   Widget _buildConnectionTile(VlcConnection connection) {
+    final bool isSelected = context.watch<VlcProvider>().currentConnection?.id == connection.id;
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            Icons.computer,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
+      elevation: isSelected ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSelected ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2) : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: () => _connectTo(connection),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                   CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    child: Icon(
+                      Icons.computer,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          connection.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                         Text(
+                          'VLC: ${connection.ipAddress}:${connection.port}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (connection.myPlaylistIp != null)
+                          Text(
+                            'MP: ${connection.myPlaylistIp}:${connection.myPlaylistPort ?? 8080}',
+                            style: const TextStyle(fontSize: 10, color: Colors.blue),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _buildSmallActionBtn(
+                    icon: connection.isFavorite ? Icons.star : Icons.star_border,
+                    color: connection.isFavorite ? Colors.amber : Colors.grey,
+                    onPressed: () async {
+                      final provider = context.read<VlcProvider>();
+                      await provider.toggleFavorite(connection.id);
+                      await _loadSavedConnections();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSmallActionBtn(
+                    icon: Icons.edit_outlined,
+                    color: Colors.blue,
+                    onPressed: () => _editConnection(connection),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildSmallActionBtn(
+                    icon: Icons.delete_outline,
+                    color: Colors.red,
+                    onPressed: () => _deleteConnection(connection),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        title: Text(
-          connection.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildSmallActionBtn({required IconData icon, required Color color, required VoidCallback onPressed}) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: color),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('VLC: ${connection.ipAddress}:${connection.port}'),
-            if (connection.myPlaylistIp != null)
-              Text(
-                'MP: ${connection.myPlaylistIp}:${connection.myPlaylistPort ?? 8080}',
-                style: const TextStyle(fontSize: 12, color: Colors.blue),
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(
-                connection.isFavorite ? Icons.star : Icons.star_border,
-                color: connection.isFavorite ? Colors.amber : null,
-              ),
-              onPressed: () async {
-                final provider = context.read<VlcProvider>();
-                await provider.toggleFavorite(connection.id);
-                await _loadSavedConnections();
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
-              onPressed: () => _editConnection(connection),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _deleteConnection(connection),
-            ),
-          ],
-        ),
-        onTap: () => _connectTo(connection),
       ),
     );
   }
@@ -426,25 +481,37 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   Future<void> _connectTo(VlcConnection connection) async {
     final provider = context.read<VlcProvider>();
 
-    // Mostra un indicatore di caricamento
+    // Mostra un indicatore di caricamento e chiudi il dialog
     if (mounted) {
       Navigator.of(context).pop();
     }
 
     final success = await provider.connect(connection);
 
-    if (mounted && !success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Impossibile connettersi a ${connection.name}'),
-          backgroundColor: Colors.red,
-          action: SnackBarAction(
-            label: 'Riprova',
-            textColor: Colors.white,
-            onPressed: () => _connectTo(connection),
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connesso con successo a ${connection.name}'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
           ),
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Impossibile connettersi a ${connection.name} (${connection.ipAddress})'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Riprova',
+              textColor: Colors.white,
+              onPressed: () => _connectTo(connection),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -472,7 +539,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Elimina Connessione'),
+        title: const Text('Elimina Server VLC'),
         content: Text('Vuoi eliminare "${connection.name}"?'),
         actions: [
           TextButton(
