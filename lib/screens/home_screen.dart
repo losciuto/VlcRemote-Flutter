@@ -437,8 +437,6 @@ class HomeScreen extends StatelessWidget {
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
-            ),
-            const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
             const Text(
