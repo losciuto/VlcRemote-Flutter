@@ -440,6 +440,47 @@ class VlcProvider with ChangeNotifier {
         ));
   }
 
+  Future<void> killAllRemoteVlc() async {
+    if (!isMyPlaylistConfigured) {
+      // Se non è configurato MyPlaylist, tentiamo almeno il kill locale se siamo su Desktop
+      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+        try {
+          if (Platform.isLinux || Platform.isMacOS) {
+            await Process.run('pkill', ['-f', 'vlc']);
+          } else if (Platform.isWindows) {
+            await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T']);
+          }
+           _myPlaylistMessage = 'Comando kill locale inviato';
+           notifyListeners();
+        } catch (e) {
+          _myPlaylistMessage = 'Errore kill locale: $e';
+          notifyListeners();
+        }
+      } else {
+        _myPlaylistMessage = 'MyPlaylist non configurato';
+        notifyListeners();
+      }
+      return;
+    }
+
+    await _runMpCommand(() => _myPlaylistService.killVlc(
+          _currentConnection!.myPlaylistIp!,
+          _currentConnection!.myPlaylistPort ?? 8080,
+          _currentConnection!.myPlaylistSecretKey!,
+        ));
+    
+    // Backup: kill locale se siamo sulla stessa macchina (opzionale ma utile)
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      try {
+        if (Platform.isLinux || Platform.isMacOS) {
+          await Process.run('pkill', ['-f', 'vlc']);
+        } else if (Platform.isWindows) {
+          await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T']);
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> _runMpCommand(
     Future<Map<String, dynamic>> Function() commandFn, {
     bool isPreview = false,

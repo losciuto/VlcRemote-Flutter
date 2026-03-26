@@ -3,7 +3,14 @@
 All notable changes to this project will be documented in this file.
 
 
-## [2.2.0] - 2026-01-21
+## [2.4.0] - 2026-03-26
+
+### Added
+- **Kill VLC**: Added functionality to force-stop all VLC instances (both local and remote via MyPlaylist).
+- **New Button**: Inserted "Kill VLC" action in both the Info Dialog and the "Smart Actions" panel.
+- **Maintenance**: Added support for critical system commands during control sessions.
+
+## [2.3.0] - 2026-01-21
 
 ### Synchronization
 - **MyPlaylist v3.4.0 Compatibility**: Fully synchronized protocol to support the latest playlist generation logic.

@@ -2,6 +2,7 @@ name: Build VlcRemote Android
 
 on:
   push:
+    branches: ["main"]
     tags:
       - "v*"
 

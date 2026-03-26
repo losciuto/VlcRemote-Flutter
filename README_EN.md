@@ -27,6 +27,7 @@ A cross-platform Flutter application to control VLC Media Player remotely over y
 - ✅ **Volume Management**: Precise 0-100% mapping with atomic synchronization
 - ✅ **Seek Bar**: Smooth temporal navigation with jump protection
 - ✅ **Fullscreen**: Toggle fullscreen mode
+- ✅ **Kill VLC**: Force-stop all VLC instances (local and remote)
 - ✅ **Playlist Preview**: View generated playlist titles before starting playback (integrated with MyPlaylist)
 - ✅ **Robust Sync**: Server echo cancellation for consistently accurate data
 
@@ -233,7 +234,7 @@ This project is released under the MIT License. See `LICENSE` for details.
 
 ## 👨‍💻 Author
 **losciuto**
-- Version: 2.3.0 (January 2026)
+- Version: 2.4.0 (March 2026)
 
 ---
 

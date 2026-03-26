@@ -140,8 +140,8 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: provider.myPlaylistMessage.startsWith('OK') 
-                            ? Colors.green.withOpacity(0.1) 
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1) 
+                            : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -205,14 +205,28 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                
+
                 OutlinedButton.icon(
-                  onPressed: provider.isMyPlaylistBusy ? null : () => _showFilterDialog(context, provider),
+                  onPressed: provider.isMyPlaylistBusy
+                      ? null
+                      : () => _showFilterDialog(context, provider),
                   icon: const Icon(Icons.filter_list),
                   label: const Text('Genera con Filtri'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                TextButton.icon(
+                  onPressed: provider.isMyPlaylistBusy ? null : () => _confirmKillVlc(context, provider),
+                  icon: const Icon(Icons.dangerous_outlined, size: 18),
+                  label: const Text('Kill all VLC instances'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red[400],
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ],
@@ -238,9 +252,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
             borderRadius: BorderRadius.circular(12),
-            color: color.withOpacity(0.05),
+            color: color.withValues(alpha: 0.05),
           ),
           child: Column(
             children: [
@@ -506,6 +520,32 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmKillVlc(BuildContext context, VlcProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Action'),
+        content: const Text(
+          'This will force-stop all VLC instances on the remote PC. Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              provider.killAllRemoteVlc();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('KILL ALL'),
+          ),
         ],
       ),
     );

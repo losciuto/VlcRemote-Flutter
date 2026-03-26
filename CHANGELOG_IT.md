@@ -3,7 +3,14 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
-## [2.2.0] - 2026-01-21
+## [2.4.0] - 2026-03-26
+
+### Aggiunto
+- **Kill VLC**: Aggiunta funzionalità per terminare forzatamente tutte le istanze di VLC (sia locali che remote tramite MyPlaylist).
+- **Nuovo Bottone**: Inserito il comando di "Kill" sia nel dialogo delle Informazioni che nel pannello delle "Smart Actions".
+- **Manutenzione**: Aggiunto supporto per comandi di sistema critici durante le sessioni di controllo.
+
+## [2.3.0] - 2026-01-21
 
 ### Sincronizzazione
 - **Compatibilità MyPlaylist v3.4.0**: Protocollo sincronizzato per supportare le ultime logiche di generazione playlist e filtri.

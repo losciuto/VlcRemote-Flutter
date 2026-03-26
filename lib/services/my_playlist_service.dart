@@ -122,6 +122,9 @@ class MyPlaylistService {
         args: {'count': count, 'preview': preview},
       );
 
+  Future<Map<String, dynamic>> killVlc(String host, int port, String key) =>
+      sendCommand(host: host, port: port, secretKey: key, command: 'kill_vlc');
+
   Future<Map<String, dynamic>> generateFiltered(
     String host,
     int port,
