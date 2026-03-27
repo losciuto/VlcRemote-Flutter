@@ -504,17 +504,45 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                             ? rawPoster 
                             : 'http://$ip:$port/poster/$videoId';
                             
-                      leadingWidget = ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          width: 40,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: Colors.grey[800], width: 40, height: 60, child: const Icon(Icons.movie, size: 20, color: Colors.white54)),
-                          errorWidget: (context, url, error) => isSeries 
-                            ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
-                            : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white))),
+                      leadingWidget = GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              insetPadding: const EdgeInsets.all(16),
+                              child: Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
+                                      fit: BoxFit.contain,
+                                      errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                    onPressed: () => Navigator.pop(ctx),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            width: 40,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[800], width: 40, height: 60, child: const Icon(Icons.movie, size: 20, color: Colors.white54)),
+                            errorWidget: (context, url, error) => isSeries 
+                              ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
+                              : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white))),
+                          ),
                         ),
                       );
                     } else {

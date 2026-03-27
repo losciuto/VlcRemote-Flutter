@@ -130,20 +130,48 @@ class PlaylistPanel extends StatelessWidget {
       final authStr = base64Encode(utf8.encode(':${conn.vlcPassword}'));
       final artUrl = 'http://$host:$port/art?item=${item.id}';
       
-      leadingWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: CachedNetworkImage(
-          imageUrl: artUrl,
-          httpHeaders: {'Authorization': 'Basic $authStr'},
-          width: 40,
-          height: 40,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: isPlaying
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Center(
-              child: Text(
+      leadingWidget = GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(16),
+              child: Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: artUrl,
+                      httpHeaders: {'Authorization': 'Basic $authStr'},
+                      fit: BoxFit.contain,
+                      errorWidget: (context, url, error) => const SizedBox.shrink(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: CachedNetworkImage(
+            imageUrl: artUrl,
+            httpHeaders: {'Authorization': 'Basic $authStr'},
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              color: isPlaying
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Center(
+                child: Text(
                 '${item.index + 1}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
