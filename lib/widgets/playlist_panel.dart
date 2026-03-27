@@ -199,6 +199,7 @@ class PlaylistPanel extends StatelessWidget {
             ),
           ),
         ),
+      ),
       );
     } else {
       leadingWidget = Container(
