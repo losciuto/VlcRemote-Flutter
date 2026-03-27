@@ -5,6 +5,7 @@ import '../models/vlc_connection.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
 import '../services/vlc_service.dart';
+import '../services/vlc_http_service.dart';
 import '../services/connection_service.dart';
 import '../services/my_playlist_service.dart';
 import '../constants/app_constants.dart';
@@ -12,6 +13,7 @@ import '../constants/app_constants.dart';
 /// Provider per gestire lo stato dell'applicazione VLC Remote
 class VlcProvider with ChangeNotifier {
   final VlcService _vlcService = VlcService();
+  final VlcHttpService _vlcHttpService = VlcHttpService();
   final ConnectionService _connectionService = ConnectionService();
   final MyPlaylistService _myPlaylistService = MyPlaylistService();
 
@@ -25,7 +27,6 @@ class VlcProvider with ChangeNotifier {
   bool _isMyPlaylistBusy = false;
   String _myPlaylistMessage = '';
   String _lastMpStatus = 'UNKNOWN'; // UNKNOWN, SUCCESS, ERROR
-  List<Map<String, dynamic>> _proposedPlaylist = [];
   List<Map<String, dynamic>> _pendingPlaylist = [];
   bool _isReconnecting = false;
   double _reconnectionProgress = 0.0;
@@ -37,6 +38,9 @@ class VlcProvider with ChangeNotifier {
   // Debouncing
   Timer? _volumeDebounceTimer;
   Timer? _seekDebounceTimer;
+
+  // Final fields
+  final List<Map<String, dynamic>> _proposedPlaylist = [];
 
   // Getters
   VlcConnection? get currentConnection => _currentConnection;
@@ -88,6 +92,15 @@ class VlcProvider with ChangeNotifier {
         _currentConnection = connection;
         await _connectionService.saveLastConnectionId(connection.id);
 
+        // Configura il servizio HTTP se la password è presente
+        if (connection.vlcPassword != null && connection.vlcPassword!.isNotEmpty) {
+          _vlcHttpService.configure(
+            connection.ipAddress,
+            connection.port,
+            connection.vlcPassword!,
+          );
+        }
+
         // Avvia l'aggiornamento periodico dello stato
         _startStatusUpdates();
 
@@ -133,10 +146,10 @@ class VlcProvider with ChangeNotifier {
       (timer) async {
         if (!_vlcService.isConnected) {
           // Se non siamo connessi, tentiamo la riconnessione.
-          // Se abbiamo fallito troppe volte, fermiamo gli aggiornamenti per risparmiare risorse.
           if (_reconnectAttempts >= AppConstants.maxRetries) {
             print('[VlcProvider] Riconnessione fallita troppe volte, fermo il timer.');
-            _stopStatusUpdates();
+            timer.cancel();
+            _statusUpdateTimer = null;
             return;
           }
           await _attemptAutoReconnect();
@@ -207,10 +220,18 @@ class VlcProvider with ChangeNotifier {
     if (_isConnecting) return; // Non aggiornare mentre connettiamo
     
     try {
-      final newStatus = await _vlcService.getStatus();
+      VlcStatus? newStatus;
+      
+      // Prova prima tramite HTTP se configurato
+      if (_vlcHttpService.isConfigured) {
+        newStatus = await _vlcHttpService.getStatus();
+      }
+      
+      // Fallback su Socket se HTTP fallisce o non è configurato
+      newStatus ??= await _vlcService.getStatus();
       
       // Se non siamo connessi o il risultato è vuoto (fallback), ignora
-      if (!_vlcService.isConnected) return;
+      if (!_vlcService.isConnected && !_vlcHttpService.isConfigured) return;
 
       // LOGICA DI EREDITÀ DELLO STATO (State Guarding)
       // Preveniamo che errori temporanei di comunicazione o parsing resettino la UI
@@ -252,7 +273,18 @@ class VlcProvider with ChangeNotifier {
   Future<void> refreshPlaylist() async {
     try {
       print('[VlcProvider] Aggiornamento playlist in corso...');
-      final newPlaylist = await _vlcService.getPlaylist();
+      List<PlaylistItem> newPlaylist = [];
+      
+      // Prova prima tramite HTTP
+      if (_vlcHttpService.isConfigured) {
+        newPlaylist = await _vlcHttpService.getPlaylist();
+      }
+      
+      // Fallback su Socket
+      if (newPlaylist.isEmpty) {
+        newPlaylist = await _vlcService.getPlaylist();
+      }
+
       _playlist = newPlaylist;
       print(
         '[VlcProvider] Playlist aggiornata: ${newPlaylist.length} elementi',

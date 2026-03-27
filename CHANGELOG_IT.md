@@ -3,6 +3,22 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
+## [2.6.0] - 2026-03-27
+
+### Nuove Funzionalità
+- **Visualizzazione Locandine**: Integrazione avanzata con `cached_network_image` per visualizzare i poster e le cover nativamente sull'app, sia elaborando le "Smart Actions" (dal server proxy di MyPlaylist) sia leggendo la scaletta attiva da VLC (tramite l'API `/art`).
+
+## [2.5.0] - 2026-03-27
+
+### Nuove Funzionalità
+- **Supporto VLC HTTP API**: Aggiunta la possibilità di comunicare con VLC tramite l'interfaccia HTTP. Questa modalità (che richiede la configurazione di una password per VLC nel server) è notevolmente più affidabile rispetto al vecchio metodo via Socket (RC string parsing), prevenendo errori di lettura della playlist e desincronizzazioni dello stato quando il titolo o il file video contengono caratteri speciali o formati non standard.
+
+### Manutenzione e Stabilità
+- **Fix Memory Leaks**: Risolti potenziali leak nei Timer di aggiornamento stato e nelle sottoscrizioni del socket.
+- **Validazione IP Avanzata**: Implementata una validazione più robusta per indirizzi IP e porte nel dialogo di connessione (previene ottetti non validi o porte fuori range).
+- **Pulizia Codice**: Rimossi campi inutilizzati e riferimenti deprecati in linea con le ultime analisi Flutter.
+- **Material 3 Update**: Aggiornati i componenti UI che utilizzavano membri deprecati (es. `surfaceVariant` → `surfaceContainerHighest`).
+
 ## [2.4.0] - 2026-03-26
 
 ### Aggiunto

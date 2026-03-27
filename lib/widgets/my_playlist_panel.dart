@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/vlc_provider.dart';
 
 class MyPlaylistPanel extends StatefulWidget {
@@ -330,7 +331,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                     Expanded(
                       child: TextField(
                         controller: actorsController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Attori',
                           hintText: 'Tom Cruise',
                           isDense: true,
@@ -338,11 +339,11 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: directorsController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Registi',
                           hintText: 'Christopher Nolan',
                           isDense: true,
@@ -378,18 +379,18 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                     Expanded(
                       child: TextField(
                         controller: excludedActorsController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Escludi Attori',
                           isDense: true,
                           border: OutlineInputBorder(),
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         controller: excludedDirectorsController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Escludi Registi',
                           isDense: true,
                           border: OutlineInputBorder(),
@@ -469,6 +470,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
     final items = List<Map<String, dynamic>>.from(provider.pendingPlaylist);
     provider.clearPendingPlaylist(); // Clear immediately so it doesn't loop
 
+    final ip = provider.currentConnection?.myPlaylistIp ?? '';
+    final port = (provider.currentConnection?.myPlaylistPort ?? 8080) + 1;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -490,10 +494,31 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   itemBuilder: (context, index) {
                     final item = items[index];
                     final isSeries = item['isSeries'] == 1 || item['isSeries'] == true;
+                    
+                    final videoId = item['id'];
+                    Widget leadingWidget;
+                    if (videoId != null && ip.isNotEmpty) {
+                      leadingWidget = ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: CachedNetworkImage(
+                          imageUrl: 'http://$ip:$port/poster/$videoId',
+                          width: 40,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(color: Colors.grey[800], width: 40, height: 60, child: const Icon(Icons.movie, size: 20, color: Colors.white54)),
+                          errorWidget: (context, url, error) => isSeries 
+                            ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
+                            : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white))),
+                        ),
+                      );
+                    } else {
+                      leadingWidget = isSeries 
+                          ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
+                          : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white)));
+                    }
+
                     return ListTile(
-                      leading: isSeries 
-                          ? const Icon(Icons.tv, color: Colors.blue, size: 20)
-                          : CircleAvatar(child: Text('${index + 1}')),
+                      leading: leadingWidget,
                       title: Text(item['title'] ?? ''),
                       trailing: isSeries ? const Badge(label: Text('SERIE')) : null,
                       dense: true,

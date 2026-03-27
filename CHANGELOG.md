@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.6.0] - 2026-03-27
+
+### Added
+- **Poster Support**: Added rich visual playlists using `cached_network_image`. The app now renders movie posters injected from MyPlaylist's proxy server for Smart Actions, and leverages VLC's native `/art` HTTP API to show album arts for the active playlist.
+
+## [2.5.0] - 2026-03-27
+
+### Added
+- **VLC HTTP API Support**: Completely rewrote the connection provider.
+
 ## [2.4.0] - 2026-03-26
 
 ### Added

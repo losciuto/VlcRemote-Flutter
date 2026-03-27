@@ -15,6 +15,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   final _nameController = TextEditingController();
   final _ipController = TextEditingController(text: '192.168.1.15');
   final _portController = TextEditingController(text: '8000');
+  final _vlcPasswordController = TextEditingController();
 
   // MyPlaylist controllers
   final _mpIpController = TextEditingController();
@@ -33,6 +34,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       _nameController.text = connection.name;
       _ipController.text = connection.ipAddress;
       _portController.text = connection.port.toString();
+      _vlcPasswordController.text = connection.vlcPassword ?? '';
       _mpIpController.text = connection.myPlaylistIp ?? '';
       _mpPortController.text = (connection.myPlaylistPort ?? 8080).toString();
       _mpSecretKeyController.text = connection.myPlaylistSecretKey ?? '';
@@ -58,6 +60,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     _nameController.dispose();
     _ipController.dispose();
     _portController.dispose();
+    _vlcPasswordController.dispose();
     super.dispose();
   }
 
@@ -221,6 +224,20 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _vlcPasswordController,
+                          decoration: InputDecoration(
+                            labelText: 'Password VLC (per HTTP API)',
+                            hintText: 'Richiesta per widget e playlist stabili',
+                            prefixIcon: const Icon(Icons.password),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          obscureText: true,
+                        ),
                         const SizedBox(height: 24),
                         
                         const Divider(),
@@ -295,6 +312,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                     _nameController.clear();
                                     _ipController.text = '192.168.1.15';
                                     _portController.text = '8000';
+                                    _vlcPasswordController.clear();
                                     _mpIpController.clear();
                                     _mpPortController.text = '8080';
                                     _mpSecretKeyController.text = 'my_default_secret_key_32chars_long';
@@ -465,6 +483,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       port: int.parse(portStr),
       lastUsed: DateTime.now(),
       isFavorite: _editingConnection?.isFavorite ?? false,
+      vlcPassword: _vlcPasswordController.text.trim().isNotEmpty ? _vlcPasswordController.text.trim() : null,
       myPlaylistIp: _mpIpController.text.trim().isNotEmpty ? _mpIpController.text.trim() : null,
       myPlaylistPort: int.tryParse(_mpPortController.text.trim()),
       myPlaylistSecretKey: _mpSecretKeyController.text.trim().isNotEmpty ? _mpSecretKeyController.text.trim() : null,
@@ -516,14 +535,20 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   bool _validateIpAddress(String ip) {
+    // IpPattern gestisce il formato base (X.X.X.X)
     final ipPattern = RegExp(r'^([0-9]{1,3}\.){3}[0-9]{1,3}$');
     if (!ipPattern.hasMatch(ip)) {
       return false;
     }
+    
+    // Controllo manuale di ogni octetto per valori 0-255 e assenza di leading zero non validi (es. 01)
     final octets = ip.split('.');
     for (final octet in octets) {
+      if (octet.isEmpty) return false;
+      if (octet.length > 1 && octet.startsWith('0')) return false; // "01" non è valido
+      
       final value = int.tryParse(octet);
-      if (value == null || value > 255) {
+      if (value == null || value < 0 || value > 255) {
         return false;
       }
     }
@@ -531,8 +556,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   bool _validatePort(String port) {
+    if (port.isEmpty) return false;
     final portValue = int.tryParse(port);
-    return portValue != null && portValue > 0 && portValue < 65536;
+    return portValue != null && portValue > 0 && portValue <= 65535;
   }
 
   Future<void> _deleteConnection(VlcConnection connection) async {

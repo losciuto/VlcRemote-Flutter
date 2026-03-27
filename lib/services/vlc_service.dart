@@ -23,9 +23,6 @@ class VlcService {
   // Simple mutex to synchronize command execution
   Future<void>? _activeCommand;
 
-  // Cache for durations to avoid flickering
-  final Map<String, int> _durationCache = {};
-
   String? _currentHost;
   int? _currentPort;
   bool _isConnected = false;
@@ -66,7 +63,7 @@ class VlcService {
           try {
             final response = utf8.decode(data);
             final now = DateTime.now();
-            _lastChunkTime = now;
+            _lastChunkTime ??= now;
 
             // Append raw incoming data to internal buffer for commands that
             // need the entire multi-chunk response (eg. playlist)
@@ -345,12 +342,8 @@ class VlcService {
       if (time == null || time == 0) {
         time = await getTime();
       }
-      if (length == null || length == 0) {
-        length = await getLength();
-      }
-      if (rawVolume == null) {
-        rawVolume = await _getVolumeRaw();
-      }
+      length ??= await getLength();
+      rawVolume ??= await _getVolumeRaw();
       
       int? volumePercent;
       if (rawVolume != null) {

@@ -203,8 +203,21 @@ Se la porta 8000 è già in uso, puoi cambiarla:
 ```bash
 vlc playlist.m3u --intf rc --rc-host 0.0.0.0:9000
 ```
-
 Ricorda di usare la stessa porta nell'app!
+
+### Configurazione HTTP API (Sperimentale / Consigliata)
+
+Dalla versione 2.5.0, VlcRemote supporta l'**API HTTP** di VLC per una maggiore robustezza nel polling di playlist e stato. L'API HTTP richiede l'inserimento di una **password** in VLC:
+
+1. Avvia VLC normalmente (senza file multimediali) e vai in **Strumenti** -> **Preferenze** -> spunta "Tutto" (in basso a sinistra).
+2. Nel menù a sinistra: **Interfacce primarie** -> seleziona **Web**.
+3. Espandi "Interfacce primarie" -> **Lua** -> in "Interfaccia HTTP" inserisci una **Password** (ad es. "1234").
+4. Chiudi VLC.
+5. In alternativa, puoi avviare VLC da riga di comando o script combinando entrambe le interfacce (`rc` e `http`):
+   ```bash
+   vlc --extraintf=http --http-password="tua-password" --intf rc --rc-host 0.0.0.0:8000
+   ```
+6. Nella pagina di configurazione di VlcRemote, inserisci la password impostata in precedenza, assicurandoti che l'IP e la porta (di solito `8080` per HTTP se omessa quella speciale) corrispondano a quelli di VLC. *Nota: se la porta HTTP differisce dalla porta del Socket (es. HTTP su 8080 e Socket su 8000) potresti aver bisogno di testare quale far prevalere. Attualmente VlcRemote riutilizza lo stesso numero di porta per entrambi i servizi.*
 
 ---
 
@@ -334,7 +347,7 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file `LICENSE` per i de
 **losciuto**
 
 - Versione originale Android: [losciuto/vlcremote](https://github.com/losciuto/vlcremote)
-- Versione Flutter: 2.4.0 (Marzo 2026)
+- Versione Flutter: 2.6.0 (Marzo 2026)
 
 ---
 
@@ -350,10 +363,10 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file `LICENSE` per i de
 
 Se incontri problemi:
 
-1. Controlla la [sezione Configurazione VLC](#configurazione-vlc)
-2. Verifica che VLC sia in ascolto sulla porta corretta
-3. Assicurati di essere sulla stessa rete
-4. Apri una [Issue](https://github.com/losciuto/vlcremote-flutter/issues)
+---
+1.  **Stabilità della Connessione**: Dalla versione 2.5.0 sono stati risolti problemi di memory leak legati ai timer di aggiornamento. Se l'app perde la connessione, un sistema di *exponential backoff* tenterà la riconnessione automatica senza sovraccaricare il dispositivo.
+2.  **Validazione IP**: Assicurati di inserire indirizzi IP nel formato corretto (es. `192.168.1.15`). L'app ora valida rigorosamente ogni ottetto per prevenire errori di connessione silenti.
+3.  **VLC Remote Control**: Ricorda che VLC deve essere avviato con l'interfaccia RC abilitata (`--intf rc --rc-host 0.0.0.0:8000`).
 
 ---
 

@@ -12,6 +12,9 @@ class VlcConnection {
   final int? myPlaylistPort;
   final String? myPlaylistSecretKey;
 
+  // VLC HTTP Settings
+  final String? vlcPassword;
+
   VlcConnection({
     required this.id,
     required this.name,
@@ -22,6 +25,7 @@ class VlcConnection {
     this.myPlaylistIp,
     this.myPlaylistPort,
     this.myPlaylistSecretKey,
+    this.vlcPassword,
   });
 
   /// Crea una connessione da un Map (per il caricamento da SharedPreferences)
@@ -36,6 +40,7 @@ class VlcConnection {
       myPlaylistIp: json['myPlaylistIp'] as String?,
       myPlaylistPort: json['myPlaylistPort'] as int?,
       myPlaylistSecretKey: json['myPlaylistSecretKey'] as String?,
+      vlcPassword: json['vlcPassword'] as String?,
     );
   }
 
@@ -51,6 +56,7 @@ class VlcConnection {
       'myPlaylistIp': myPlaylistIp,
       'myPlaylistPort': myPlaylistPort,
       'myPlaylistSecretKey': myPlaylistSecretKey,
+      'vlcPassword': vlcPassword,
     };
   }
 
@@ -65,6 +71,7 @@ class VlcConnection {
     String? myPlaylistIp,
     int? myPlaylistPort,
     String? myPlaylistSecretKey,
+    String? vlcPassword,
   }) {
     return VlcConnection(
       id: id ?? this.id,
@@ -76,6 +83,7 @@ class VlcConnection {
       myPlaylistIp: myPlaylistIp ?? this.myPlaylistIp,
       myPlaylistPort: myPlaylistPort ?? this.myPlaylistPort,
       myPlaylistSecretKey: myPlaylistSecretKey ?? this.myPlaylistSecretKey,
+      vlcPassword: vlcPassword ?? this.vlcPassword,
     );
   }
 

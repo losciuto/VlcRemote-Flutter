@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/vlc_provider.dart';
 
 class PlaylistPanel extends StatelessWidget {
@@ -114,11 +116,86 @@ class PlaylistPanel extends StatelessWidget {
 
   Widget _buildPlaylistItem(
     BuildContext context,
-    item,
+    dynamic item,
     VlcProvider provider,
   ) {
     final isPlaying = item.isPlaying;
+    final conn = provider.currentConnection;
     
+    Widget leadingWidget;
+    
+    if (conn != null && conn.vlcPassword != null && conn.vlcPassword!.isNotEmpty) {
+      final host = conn.ipAddress;
+      final port = conn.port; // VlcRemote uses same port currently
+      final authStr = base64Encode(utf8.encode(':${conn.vlcPassword}'));
+      final artUrl = 'http://$host:$port/art?item=${item.id}';
+      
+      leadingWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: CachedNetworkImage(
+          imageUrl: artUrl,
+          httpHeaders: {'Authorization': 'Basic $authStr'},
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: isPlaying
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Center(
+              child: Text(
+                '${item.index + 1}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isPlaying
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          errorWidget: (context, url, error) => Container(
+            color: isPlaying
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Center(
+              child: Text(
+                '${item.index + 1}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isPlaying
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      leadingWidget = Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isPlaying
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            '${item.index + 1}',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isPlaying
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -134,26 +211,10 @@ class PlaylistPanel extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        leading: Container(
+        leading: SizedBox(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(
-            color: isPlaying
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              '${item.index + 1}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isPlaying
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
+          child: leadingWidget,
         ),
         title: Text(
           item.displayName,
