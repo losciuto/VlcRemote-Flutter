@@ -496,12 +496,18 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                     final isSeries = item['isSeries'] == 1 || item['isSeries'] == true;
                     
                     final videoId = item['id'];
+                    final String? rawPoster = item['posterPath'];
+                    
                     Widget leadingWidget;
                     if (videoId != null && ip.isNotEmpty) {
+                      final imageUrl = (rawPoster != null && rawPoster.startsWith('http')) 
+                            ? rawPoster 
+                            : 'http://$ip:$port/poster/$videoId';
+                            
                       leadingWidget = ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: CachedNetworkImage(
-                          imageUrl: 'http://$ip:$port/poster/$videoId',
+                          imageUrl: imageUrl,
                           width: 40,
                           height: 60,
                           fit: BoxFit.cover,
