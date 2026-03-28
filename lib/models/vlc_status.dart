@@ -6,6 +6,9 @@ class VlcStatus {
   final int? volume; // 0-100 (opzionale)
   final bool isPlaying;
   final bool isFullscreen;
+  final String? plot;
+  final String? rating;
+  final String? posterUrl;
 
   VlcStatus({
     this.nowPlaying = 'Nessun video in riproduzione',
@@ -14,6 +17,9 @@ class VlcStatus {
     this.volume,
     this.isPlaying = false,
     this.isFullscreen = false,
+    this.plot,
+    this.rating,
+    this.posterUrl,
   });
 
   /// Formatta il tempo in formato mm:ss
@@ -42,6 +48,9 @@ class VlcStatus {
     int? volume,
     bool? isPlaying,
     bool? isFullscreen,
+    String? plot,
+    String? rating,
+    String? posterUrl,
   }) {
     return VlcStatus(
       nowPlaying: nowPlaying ?? this.nowPlaying,
@@ -50,6 +59,9 @@ class VlcStatus {
       volume: volume ?? this.volume,
       isPlaying: isPlaying ?? this.isPlaying,
       isFullscreen: isFullscreen ?? this.isFullscreen,
+      plot: plot ?? this.plot,
+      rating: rating ?? this.rating,
+      posterUrl: posterUrl ?? this.posterUrl,
     );
   }
 

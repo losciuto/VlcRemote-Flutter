@@ -128,40 +128,104 @@ class PlaylistPanel extends StatelessWidget {
       final host = conn.ipAddress;
       final port = conn.port; // VlcRemote uses same port currently
       final authStr = base64Encode(utf8.encode(':${conn.vlcPassword}'));
-      final artUrl = 'http://$host:$port/art?item=${item.id}';
+      
+      final String? extractedPosterUrl = isPlaying ? provider.status.posterUrl : null;
+      final bool hasExternalPoster = extractedPosterUrl != null && extractedPosterUrl.startsWith('http');
+      
+      final artUrl = hasExternalPoster ? extractedPosterUrl : 'http://$host:$port/art?item=${item.id}';
+      final Map<String, String>? artHeaders = hasExternalPoster ? null : {'Authorization': 'Basic $authStr'};
       
       leadingWidget = ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: CachedNetworkImage(
           imageUrl: artUrl,
-          httpHeaders: {'Authorization': 'Basic $authStr'},
+          httpHeaders: artHeaders,
           width: 40,
           height: 40,
           fit: BoxFit.cover,
           imageBuilder: (context, imageProvider) => GestureDetector(
             onTap: () {
+              final String? plot = isPlaying ? provider.status.plot : null;
+              final String? rating = isPlaying ? provider.status.rating : null;
+
               showDialog(
                 context: context,
                 builder: (ctx) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  insetPadding: const EdgeInsets.all(16),
-                  child: Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                          imageUrl: artUrl,
-                          httpHeaders: {'Authorization': 'Basic $authStr'},
-                          fit: BoxFit.contain,
-                          errorWidget: (context, url, error) => const SizedBox.shrink(),
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  insetPadding: const EdgeInsets.all(20),
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => Navigator.pop(ctx),
+                            ),
+                          ],
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
+                        Flexible(
+                          flex: 5,
+                          child: Center(
+                            child: InteractiveViewer(
+                              panEnabled: true,
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CachedNetworkImage(
+                                  imageUrl: artUrl,
+                                  httpHeaders: artHeaders,
+                                  fit: BoxFit.contain,
+                                  errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (plot != null || rating != null) ...[
+                          const SizedBox(height: 16),
+                          if (rating != null)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  rating,
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          if (plot != null) ...[
+                            const SizedBox(height: 12),
+                            Flexible(
+                              flex: 3,
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  plot,
+                                  style: const TextStyle(fontSize: 14),
+                                  textAlign: TextAlign.justify,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ] else if (isPlaying) ...[
+                          const SizedBox(height: 16),
+                          const Center(
+                            child: Text(
+                              'Nessuna trama nei tag del file',
+                              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               );

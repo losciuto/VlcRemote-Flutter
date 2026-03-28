@@ -516,24 +516,69 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                               showDialog(
                                 context: context,
                                 builder: (ctx) => Dialog(
-                                  backgroundColor: Colors.transparent,
-                                  insetPadding: const EdgeInsets.all(16),
-                                  child: Stack(
-                                    alignment: Alignment.topRight,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          fit: BoxFit.contain,
-                                          errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                  backgroundColor: Theme.of(context).colorScheme.surface,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  insetPadding: const EdgeInsets.all(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.close),
+                                              onPressed: () => Navigator.pop(ctx),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                                        onPressed: () => Navigator.pop(ctx),
-                                      ),
-                                    ],
+                                        Flexible(
+                                          flex: 5,
+                                          child: Center(
+                                            child: InteractiveViewer(
+                                              panEnabled: true,
+                                              minScale: 0.5,
+                                              maxScale: 4.0,
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: CachedNetworkImage(
+                                                  imageUrl: imageUrl,
+                                                  fit: BoxFit.contain,
+                                                  errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.star, color: Colors.amber, size: 24),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              (item['rating'] as num?)?.toStringAsFixed(1) ?? 'N/A',
+                                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Flexible(
+                                          flex: 3,
+                                          child: SingleChildScrollView(
+                                            child: Text(
+                                              item['plot']?.toString().isNotEmpty == true 
+                                                  ? item['plot'] 
+                                                  : 'Nessuna trama disponibile.',
+                                              style: const TextStyle(fontSize: 14),
+                                              textAlign: TextAlign.justify,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );

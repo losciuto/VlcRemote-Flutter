@@ -50,14 +50,25 @@ class VlcHttpService {
         final volume = int.tryParse(root.findElements('volume').first.innerText) ?? 0;
         final fullscreen = root.findElements('fullscreen').first.innerText == '1';
 
-        // Estrazione titolo dai metadati
+        // Estrazione titolo e metadati (trama, voto, poster)
         String title = 'Nessun video in riproduzione';
+        String? plot;
+        String? rating;
+        String? posterUrl;
         try {
           final infoNodes = root.findAllElements('info');
           for (final node in infoNodes) {
-            if (node.getAttribute('name') == 'filename' || node.getAttribute('name') == 'title') {
+            final name = node.getAttribute('name')?.toLowerCase();
+            if (name == 'filename' && title == 'Nessun video in riproduzione') {
               title = node.innerText;
-              if (node.getAttribute('name') == 'title' && title.isNotEmpty) break;
+            } else if (name == 'title') {
+              title = node.innerText;
+            } else if (name == 'description' || name == 'comment' || name == 'synopsis' || name == 'comments') {
+              if (node.innerText.isNotEmpty) plot = node.innerText;
+            } else if (name == 'rating' || name == 'vote') {
+              if (node.innerText.isNotEmpty) rating = node.innerText;
+            } else if (name == 'poster_url' || name == 'artwork' || name == 'poster') {
+              if (node.innerText.isNotEmpty) posterUrl = node.innerText;
             }
           }
         } catch (_) {}
@@ -69,6 +80,9 @@ class VlcHttpService {
           volume: (volume * 100 / 256).round().clamp(0, 100),
           isPlaying: state == 'playing',
           isFullscreen: fullscreen,
+          plot: plot,
+          rating: rating,
+          posterUrl: posterUrl,
         );
       }
     } catch (e) {
