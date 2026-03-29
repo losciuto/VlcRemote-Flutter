@@ -26,10 +26,7 @@ class MyPlaylistService {
       final secretKeyHandle = SecretKey(keyBytes);
 
       // 2. Preparazione del messaggio JSON
-      final payload = jsonEncode({
-        'command': command,
-        'args': args ?? {},
-      });
+      final payload = jsonEncode({'command': command, 'args': args ?? {}});
       final cleartext = utf8.encode(payload);
 
       // 3. Generazione Nonce (12 byte)
@@ -51,12 +48,16 @@ class MyPlaylistService {
       final buffer = packet.takeBytes();
 
       // 6. Invio tramite Socket TCP
-      socket = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
-      
+      socket = await Socket.connect(
+        host,
+        port,
+        timeout: const Duration(seconds: 5),
+      );
+
       // Invio della lunghezza del messaggio (4 byte) + il messaggio stesso
       final lengthHeader = Uint8List(4);
       ByteData.view(lengthHeader.buffer).setUint32(0, buffer.length);
-      
+
       socket.add(lengthHeader);
       socket.add(buffer);
       await socket.flush();
@@ -64,34 +65,36 @@ class MyPlaylistService {
       // 7. Lettura risposta (formato JSON) - Accumulo multi-chunk
       final responseBuffer = StringBuffer();
       final responseCompleter = Completer<String>();
-      
-      socket.cast<List<int>>().transform(utf8.decoder).listen(
-        (data) {
-          responseBuffer.write(data);
-        },
-        onError: (e) {
-          if (!responseCompleter.isCompleted) {
-            responseCompleter.completeError(e);
-          }
-        },
-        onDone: () {
-          if (!responseCompleter.isCompleted) {
-            responseCompleter.complete(responseBuffer.toString().trim());
-          }
-        },
-        cancelOnError: true,
-      );
+
+      socket
+          .cast<List<int>>()
+          .transform(utf8.decoder)
+          .listen(
+            (data) {
+              responseBuffer.write(data);
+            },
+            onError: (e) {
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.completeError(e);
+              }
+            },
+            onDone: () {
+              if (!responseCompleter.isCompleted) {
+                responseCompleter.complete(responseBuffer.toString().trim());
+              }
+            },
+            cancelOnError: true,
+          );
 
       final rawResult = await responseCompleter.future.timeout(
-        const Duration(seconds: 10), // Timeout leggermente più lungo per risposte pesanti
+        const Duration(
+          seconds: 10,
+        ), // Timeout leggermente più lungo per risposte pesanti
       );
 
       return jsonDecode(rawResult) as Map<String, dynamic>;
     } catch (e) {
-      return {
-        'status': 'error',
-        'message': e.toString(),
-      };
+      return {'status': 'error', 'message': e.toString()};
     } finally {
       socket?.destroy();
     }
@@ -104,23 +107,33 @@ class MyPlaylistService {
   Future<Map<String, dynamic>> stop(String host, int port, String key) =>
       sendCommand(host: host, port: port, secretKey: key, command: 'stop');
 
-  Future<Map<String, dynamic>> generateRandom(String host, int port, String key, {int? count, bool preview = false}) =>
-      sendCommand(
-        host: host,
-        port: port,
-        secretKey: key,
-        command: 'generate_random',
-        args: {'count': count, 'preview': preview},
-      );
+  Future<Map<String, dynamic>> generateRandom(
+    String host,
+    int port,
+    String key, {
+    int? count,
+    bool preview = false,
+  }) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'generate_random',
+    args: {'count': count, 'preview': preview},
+  );
 
-  Future<Map<String, dynamic>> generateRecent(String host, int port, String key, {int? count, bool preview = false}) =>
-      sendCommand(
-        host: host,
-        port: port,
-        secretKey: key,
-        command: 'generate_recent',
-        args: {'count': count, 'preview': preview},
-      );
+  Future<Map<String, dynamic>> generateRecent(
+    String host,
+    int port,
+    String key, {
+    int? count,
+    bool preview = false,
+  }) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'generate_recent',
+    args: {'count': count, 'preview': preview},
+  );
 
   Future<Map<String, dynamic>> killVlc(String host, int port, String key) =>
       sendCommand(host: host, port: port, secretKey: key, command: 'kill_vlc');
@@ -140,24 +153,23 @@ class MyPlaylistService {
     List<String>? excludedDirectors,
     int? limit,
     bool preview = false,
-  }) =>
-      sendCommand(
-        host: host,
-        port: port,
-        secretKey: key,
-        command: 'generate_filtered',
-        args: {
-          'genres': genres,
-          'years': years,
-          'min_rating': minRating,
-          'actors': actors,
-          'directors': directors,
-          'excluded_genres': excludedGenres,
-          'excluded_years': excludedYears,
-          'excluded_actors': excludedActors,
-          'excluded_directors': excludedDirectors,
-          'limit': limit,
-          'preview': preview,
-        },
-      );
+  }) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'generate_filtered',
+    args: {
+      'genres': genres,
+      'years': years,
+      'min_rating': minRating,
+      'actors': actors,
+      'directors': directors,
+      'excluded_genres': excludedGenres,
+      'excluded_years': excludedYears,
+      'excluded_actors': excludedActors,
+      'excluded_directors': excludedDirectors,
+      'limit': limit,
+      'preview': preview,
+    },
+  );
 }

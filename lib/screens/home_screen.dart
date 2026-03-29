@@ -26,10 +26,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(width: 12),
             const Text(
               'VLC Remote',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
             ),
           ],
         ),
@@ -62,10 +59,8 @@ class HomeScreen extends StatelessWidget {
             children: [
               // Barra di Stato Globale (Avvisi di Collegamento)
               _buildStatusBar(context, provider),
-              
-              Expanded(
-                child: _buildMainContent(context, provider),
-              ),
+
+              Expanded(child: _buildMainContent(context, provider)),
             ],
           );
         },
@@ -73,7 +68,7 @@ class HomeScreen extends StatelessWidget {
       floatingActionButton: Consumer<VlcProvider>(
         builder: (context, provider, _) {
           if (!provider.isConnected) return const SizedBox.shrink();
-          
+
           return FloatingActionButton(
             onPressed: () => provider.refreshStatus(),
             tooltip: 'Aggiorna stato',
@@ -121,8 +116,12 @@ class HomeScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5)),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
+        ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: Column(
@@ -153,7 +152,14 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusItem(BuildContext context, String label, String status, Color color, IconData icon, String ip) {
+  Widget _buildStatusItem(
+    BuildContext context,
+    String label,
+    String status,
+    Color color,
+    IconData icon,
+    String ip,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -185,7 +191,11 @@ class HomeScreen extends StatelessWidget {
             const Spacer(),
             Text(
               ip,
-              style: TextStyle(fontSize: 8, color: Colors.grey[600], fontFamily: 'monospace'),
+              style: TextStyle(
+                fontSize: 8,
+                color: Colors.grey[600],
+                fontFamily: 'monospace',
+              ),
             ),
           ],
         ),
@@ -214,11 +224,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.cloud_off,
-                size: 80,
-                color: Colors.grey[600],
-              ),
+              Icon(Icons.cloud_off, size: 80, color: Colors.grey[600]),
               const SizedBox(height: 24),
               Text(
                 'Non connesso a VLC',
@@ -250,7 +256,9 @@ class HomeScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -280,7 +288,7 @@ class HomeScreen extends StatelessWidget {
           // Card "Now Playing"
           const NowPlayingCard(),
           const SizedBox(height: 16),
-          
+
           // Pannello di controllo VLC
           const ControlPanel(),
           const SizedBox(height: 24),
@@ -293,20 +301,25 @@ class HomeScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              foregroundColor: Theme.of(
+                context,
+              ).colorScheme.onSecondaryContainer,
+              textStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Bottone "Apri Playlist"
           ElevatedButton.icon(
             onPressed: () => _showPlaylistSheet(context),
             icon: const Icon(Icons.queue_music),
             label: const Text('Apri Playlist VLC'),
             style: ElevatedButton.styleFrom(
-             padding: const EdgeInsets.symmetric(vertical: 16),
-             textStyle: const TextStyle(fontSize: 18),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 18),
             ),
           ),
         ],
@@ -409,10 +422,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             const Text(
               'VLC Remote Flutter',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(

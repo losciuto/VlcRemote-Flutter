@@ -37,13 +37,14 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
   void _onProviderChange() {
     if (!mounted) return;
     final provider = context.read<VlcProvider>();
-    
+
     // Rileva quando il server ha finito di elaborare (da busy a non busy)
     if (_wasBusy && !provider.isMyPlaylistBusy) {
       if (provider.myPlaylistMessage.isNotEmpty) {
-        final isError = provider.myPlaylistMessage.toLowerCase().contains('errore') || 
-                        provider.myPlaylistMessage.toLowerCase().contains('failed');
-        
+        final isError =
+            provider.myPlaylistMessage.toLowerCase().contains('errore') ||
+            provider.myPlaylistMessage.toLowerCase().contains('failed');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.myPlaylistMessage),
@@ -66,7 +67,11 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.playlist_add_check_circle, size: 64, color: Colors.grey),
+                const Icon(
+                  Icons.playlist_add_check_circle,
+                  size: 64,
+                  color: Colors.grey,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'MyPlaylist non configurato',
@@ -92,7 +97,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
 
         return Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -107,7 +114,10 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                     const SizedBox(width: 12),
                     const Text(
                       'Smart Actions',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     if (provider.isMyPlaylistBusy)
@@ -119,37 +129,37 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Toggle per Anteprima
                 Row(
-                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                   children: [
-                     const Text('Anteprima playlist prima di riprodurre'),
-                     Switch(
-                       value: _previewMode,
-                       onChanged: (val) => setState(() => _previewMode = val),
-                     ),
-                   ],
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Anteprima playlist prima di riprodurre'),
+                    Switch(
+                      value: _previewMode,
+                      onChanged: (val) => setState(() => _previewMode = val),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 16),
-                
+
                 if (provider.myPlaylistMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: provider.myPlaylistMessage.startsWith('OK') 
-                            ? Colors.green.withValues(alpha: 0.1) 
+                        color: provider.myPlaylistMessage.startsWith('OK')
+                            ? Colors.green.withValues(alpha: 0.1)
                             : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         provider.myPlaylistMessage,
                         style: TextStyle(
-                          color: provider.myPlaylistMessage.startsWith('OK') 
-                              ? Colors.green 
+                          color: provider.myPlaylistMessage.startsWith('OK')
+                              ? Colors.green
                               : Colors.red,
                           fontSize: 12,
                         ),
@@ -166,7 +176,11 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         icon: Icons.shuffle,
                         label: 'Random',
                         color: Colors.purple,
-                        onTap: provider.isMyPlaylistBusy ? null : () => provider.mpGenerateRandom(preview: _previewMode),
+                        onTap: provider.isMyPlaylistBusy
+                            ? null
+                            : () => provider.mpGenerateRandom(
+                                preview: _previewMode,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -176,7 +190,11 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         icon: Icons.history,
                         label: 'Recenti',
                         color: Colors.blue,
-                        onTap: provider.isMyPlaylistBusy ? null : () => provider.mpGenerateRecent(preview: _previewMode),
+                        onTap: provider.isMyPlaylistBusy
+                            ? null
+                            : () => provider.mpGenerateRecent(
+                                preview: _previewMode,
+                              ),
                       ),
                     ),
                   ],
@@ -190,7 +208,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         icon: Icons.play_arrow,
                         label: 'Riproduci',
                         color: Colors.green,
-                        onTap: provider.isMyPlaylistBusy ? null : () => provider.mpPlay(),
+                        onTap: provider.isMyPlaylistBusy
+                            ? null
+                            : () => provider.mpPlay(),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -200,7 +220,9 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         icon: Icons.stop,
                         label: 'Ferma',
                         color: Colors.red,
-                        onTap: provider.isMyPlaylistBusy ? null : () => provider.mpStop(),
+                        onTap: provider.isMyPlaylistBusy
+                            ? null
+                            : () => provider.mpStop(),
                       ),
                     ),
                   ],
@@ -216,13 +238,16 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 TextButton.icon(
-                  onPressed: provider.isMyPlaylistBusy ? null : () => _confirmKillVlc(context, provider),
+                  onPressed: provider.isMyPlaylistBusy
+                      ? null
+                      : () => _confirmKillVlc(context, provider),
                   icon: const Icon(Icons.dangerous_outlined, size: 18),
                   label: const Text('Kill all VLC instances'),
                   style: TextButton.styleFrom(
@@ -304,7 +329,14 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('METADATI DA INCLUDERE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.green)),
+                const Text(
+                  'METADATI DA INCLUDERE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.green,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: genresController,
@@ -354,7 +386,14 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text('METADATI DA ESCLUDERE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.redAccent)),
+                const Text(
+                  'METADATI DA ESCLUDERE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.redAccent,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: excludedGenresController,
@@ -400,7 +439,14 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text('ALTRI PARAMETRI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.blueGrey)),
+                const Text(
+                  'ALTRI PARAMETRI',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.blueGrey,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Text('Valutazione Minima:'),
                 Slider(
@@ -431,8 +477,12 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
             ),
             ElevatedButton(
               onPressed: () {
-                List<String> split(String t) => t.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-                
+                List<String> split(String t) => t
+                    .split(',')
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+
                 final genres = split(genresController.text);
                 final excludedGenres = split(excludedGenresController.text);
                 final years = split(yearController.text);
@@ -440,18 +490,26 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                 final actors = split(actorsController.text);
                 final excludedActors = split(excludedActorsController.text);
                 final directors = split(directorsController.text);
-                final excludedDirectors = split(excludedDirectorsController.text);
+                final excludedDirectors = split(
+                  excludedDirectorsController.text,
+                );
                 final limit = int.tryParse(limitController.text);
 
                 provider.mpGenerateFiltered(
                   genres: genres.isEmpty ? null : genres,
-                  excludedGenres: excludedGenres.isEmpty ? null : excludedGenres,
+                  excludedGenres: excludedGenres.isEmpty
+                      ? null
+                      : excludedGenres,
                   years: years.isEmpty ? null : years,
                   excludedYears: excludedYears.isEmpty ? null : excludedYears,
                   actors: actors.isEmpty ? null : actors,
-                  excludedActors: excludedActors.isEmpty ? null : excludedActors,
+                  excludedActors: excludedActors.isEmpty
+                      ? null
+                      : excludedActors,
                   directors: directors.isEmpty ? null : directors,
-                  excludedDirectors: excludedDirectors.isEmpty ? null : excludedDirectors,
+                  excludedDirectors: excludedDirectors.isEmpty
+                      ? null
+                      : excludedDirectors,
                   minRating: minRating > 0 ? minRating : null,
                   limit: limit,
                   preview: _previewMode,
@@ -487,23 +545,27 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
-          child: items.isEmpty 
-              ? const Center(child: Text('Nessun video trovato con questi filtri.'))
+          child: items.isEmpty
+              ? const Center(
+                  child: Text('Nessun video trovato con questi filtri.'),
+                )
               : ListView.builder(
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    final isSeries = item['isSeries'] == 1 || item['isSeries'] == true;
-                    
+                    final isSeries =
+                        item['isSeries'] == 1 || item['isSeries'] == true;
+
                     final videoId = item['id'];
                     final String? rawPoster = item['posterPath'];
-                    
+
                     Widget leadingWidget;
                     if (videoId != null && ip.isNotEmpty) {
-                      final imageUrl = (rawPoster != null && rawPoster.startsWith('http')) 
-                            ? rawPoster 
-                            : 'http://$ip:$port/poster/$videoId';
-                            
+                      final imageUrl =
+                          (rawPoster != null && rawPoster.startsWith('http'))
+                          ? rawPoster
+                          : 'http://$ip:$port/poster/$videoId';
+
                       leadingWidget = ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: CachedNetworkImage(
@@ -516,21 +578,33 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                               showDialog(
                                 context: context,
                                 builder: (ctx) => Dialog(
-                                  backgroundColor: Theme.of(context).colorScheme.surface,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                   insetPadding: const EdgeInsets.all(20),
                                   child: Container(
-                                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
+                                    padding: const EdgeInsets.only(
+                                      top: 8,
+                                      left: 16,
+                                      right: 16,
+                                      bottom: 16,
+                                    ),
                                     child: Column(
                                       mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
                                           children: [
                                             IconButton(
                                               icon: const Icon(Icons.close),
-                                              onPressed: () => Navigator.pop(ctx),
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx),
                                             ),
                                           ],
                                         ),
@@ -542,11 +616,14 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                                               minScale: 0.5,
                                               maxScale: 4.0,
                                               child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                                 child: CachedNetworkImage(
                                                   imageUrl: imageUrl,
                                                   fit: BoxFit.contain,
-                                                  errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          const SizedBox.shrink(),
                                                 ),
                                               ),
                                             ),
@@ -554,13 +631,23 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                                         ),
                                         const SizedBox(height: 16),
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            const Icon(Icons.star, color: Colors.amber, size: 24),
+                                            const Icon(
+                                              Icons.star,
+                                              color: Colors.amber,
+                                              size: 24,
+                                            ),
                                             const SizedBox(width: 8),
                                             Text(
-                                              (item['rating'] as num?)?.toStringAsFixed(1) ?? 'N/A',
-                                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                              (item['rating'] as num?)
+                                                      ?.toStringAsFixed(1) ??
+                                                  'N/A',
+                                              style: const TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -569,10 +656,15 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                                           flex: 3,
                                           child: SingleChildScrollView(
                                             child: Text(
-                                              item['plot']?.toString().isNotEmpty == true 
-                                                  ? item['plot'] 
+                                              item['plot']
+                                                          ?.toString()
+                                                          .isNotEmpty ==
+                                                      true
+                                                  ? item['plot']
                                                   : 'Nessuna trama disponibile.',
-                                              style: const TextStyle(fontSize: 14),
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
                                               textAlign: TextAlign.justify,
                                             ),
                                           ),
@@ -592,22 +684,59 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                               ),
                             ),
                           ),
-                          placeholder: (context, url) => Container(color: Colors.grey[800], width: 40, height: 60, child: const Icon(Icons.movie, size: 20, color: Colors.white54)),
-                          errorWidget: (context, url, error) => isSeries 
-                            ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
-                            : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white))),
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[800],
+                            width: 40,
+                            height: 60,
+                            child: const Icon(
+                              Icons.movie,
+                              size: 20,
+                              color: Colors.white54,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => isSeries
+                              ? const CircleAvatar(
+                                  backgroundColor: Colors.blueGrey,
+                                  child: Icon(
+                                    Icons.tv,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                )
+                              : CircleAvatar(
+                                  backgroundColor: Colors.grey[700],
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
                         ),
                       );
                     } else {
-                      leadingWidget = isSeries 
-                          ? const CircleAvatar(backgroundColor: Colors.blueGrey, child: Icon(Icons.tv, color: Colors.white, size: 20))
-                          : CircleAvatar(backgroundColor: Colors.grey[700], child: Text('${index + 1}', style: const TextStyle(color: Colors.white)));
+                      leadingWidget = isSeries
+                          ? const CircleAvatar(
+                              backgroundColor: Colors.blueGrey,
+                              child: Icon(
+                                Icons.tv,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            )
+                          : CircleAvatar(
+                              backgroundColor: Colors.grey[700],
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            );
                     }
 
                     return ListTile(
                       leading: leadingWidget,
                       title: Text(item['title'] ?? ''),
-                      trailing: isSeries ? const Badge(label: Text('SERIE')) : null,
+                      trailing: isSeries
+                          ? const Badge(label: Text('SERIE'))
+                          : null,
                       dense: true,
                     );
                   },
@@ -627,9 +756,11 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
               icon: const Icon(Icons.play_arrow),
               label: const Text('Riproduci Ora'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, 
+                backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
         ],

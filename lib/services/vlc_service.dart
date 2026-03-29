@@ -114,7 +114,9 @@ class VlcService {
         try {
           await _socketSubscription!.cancel();
         } catch (e) {
-          print('[VlcService] Errore durante la cancellazione della sottoscrizione: $e');
+          print(
+            '[VlcService] Errore durante la cancellazione della sottoscrizione: $e',
+          );
         }
         _socketSubscription = null;
       }
@@ -123,7 +125,7 @@ class VlcService {
       if (_socket != null) {
         try {
           // destroy() è più aggressivo di close() e assicura la chiusura immediata
-          _socket!.destroy(); 
+          _socket!.destroy();
         } catch (e) {
           print('[VlcService] Errore durante la distruzione del socket: $e');
         }
@@ -200,13 +202,14 @@ class VlcService {
         subscription = responseStream.listen((line) {
           final trimmed = line.trim();
           // Ignoriamo l'echo del comando, il prompt '>', o righe vuote
-          if (trimmed == command.trim() || 
-              trimmed == '>' || 
+          if (trimmed == command.trim() ||
+              trimmed == '>' ||
               trimmed.startsWith('> $command') ||
-              trimmed == 'Unknown command `$command\'. Type `help\' for help.') {
+              trimmed ==
+                  'Unknown command `$command\'. Type `help\' for help.') {
             return;
           }
-          
+
           if (!completer.isCompleted) {
             completer.complete(line);
             subscription?.cancel();
@@ -316,15 +319,15 @@ class VlcService {
     try {
       // Nota: getTitle, getTime, etc. usano già sendCommandAndRead che è sincronizzato.
       // Invocandoli in sequenza qui, garantiamo che ogni risposta sia quella giusta.
-      
+
       final title = await getTitle();
-      
+
       // Fallback robusto per il tempo: proviamo prima 'status', poi 'get_time'
       int? time;
       int? length;
       int? rawVolume;
       String state = 'stopped';
-      
+
       final statusResp = await sendCommandAndRead('status');
       if (statusResp != null) {
         final itemRegex = RegExp(r'\( ([^:]+): (.*?) \)');
@@ -334,17 +337,19 @@ class VlcService {
           if (key == 'time') time = int.tryParse(value ?? '');
           if (key == 'length') length = int.tryParse(value ?? '');
           if (key == 'state') state = value ?? 'stopped';
-          if (key == 'audio volume' || key == 'volume') rawVolume = int.tryParse(value ?? '');
+          if (key == 'audio volume' || key == 'volume') {
+            rawVolume = int.tryParse(value ?? '');
+          }
         }
       }
-      
+
       // Se mancano dati critici, usiamo i comandi diretti (più affidabili in alcune build di VLC)
       if (time == null || time == 0) {
         time = await getTime();
       }
       length ??= await getLength();
       rawVolume ??= await _getVolumeRaw();
-      
+
       int? volumePercent;
       if (rawVolume != null) {
         volumePercent = (rawVolume * 100.0 / 256.0).round().clamp(0, 100);
@@ -475,27 +480,27 @@ class VlcService {
         if (idMatch != null) {
           vlcId = int.tryParse(idMatch.group(1)!);
           title = idMatch.group(2)!.trim();
-        } 
+        }
         // Fallback: cerca solo ID all'inizio se seguito da spazio
         else {
-           final simpleIdMatch = RegExp(r'^(\d+)\s+(.+)').firstMatch(title);
-           if (simpleIdMatch != null) {
-             vlcId = int.tryParse(simpleIdMatch.group(1)!);
-             title = simpleIdMatch.group(2)!.trim();
-           }
+          final simpleIdMatch = RegExp(r'^(\d+)\s+(.+)').firstMatch(title);
+          if (simpleIdMatch != null) {
+            vlcId = int.tryParse(simpleIdMatch.group(1)!);
+            title = simpleIdMatch.group(2)!.trim();
+          }
         }
 
         // Se non abbiamo trovato ID, proviamo a vedere se la riga inizia con un numero
         // ma attenzione a non prendere l'anno "(2025)" come ID se è all'inizio per sbaglio
         if (vlcId == null) {
-           final startNumMatch = RegExp(r'^(\d+)').firstMatch(title);
-           if (startNumMatch != null) {
-              vlcId = int.tryParse(startNumMatch.group(1)!);
-              // Rimuoviamo l'ID dalla stringa
-              title = title.substring(startNumMatch.end).trim();
-              // Rimuoviamo eventuali trattini o punti rimasti
-               title = title.replaceFirst(RegExp(r'^[\.\-]\s*'), '').trim();
-           }
+          final startNumMatch = RegExp(r'^(\d+)').firstMatch(title);
+          if (startNumMatch != null) {
+            vlcId = int.tryParse(startNumMatch.group(1)!);
+            // Rimuoviamo l'ID dalla stringa
+            title = title.substring(startNumMatch.end).trim();
+            // Rimuoviamo eventuali trattini o punti rimasti
+            title = title.replaceFirst(RegExp(r'^[\.\-]\s*'), '').trim();
+          }
         }
 
         // Rimuovi anno/info tra parentesi "(2025)"
@@ -505,15 +510,16 @@ class VlcService {
         title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
 
         // Aggiungi solo se ha un ID valido e non è vuoto
-        if (vlcId != null && 
+        if (vlcId != null &&
             title.isNotEmpty &&
-            !playlistItems.any((item) => item.id == vlcId)) { // Usa ID per unicità
-          
+            !playlistItems.any((item) => item.id == vlcId)) {
+          // Usa ID per unicità
+
           playlistItems.add(
             PlaylistItem(
               id: vlcId,
-              index: index, 
-              title: title, 
+              index: index,
+              title: title,
               duration: null,
               isPlaying: isPlaying,
             ),

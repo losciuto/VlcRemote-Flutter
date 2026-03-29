@@ -7,7 +7,10 @@ void main() {
     test('Format time correctly', () {
       expect(VlcStatus.formatTime(0), '00:00');
       expect(VlcStatus.formatTime(65), '01:05');
-      expect(VlcStatus.formatTime(3600), '60:00'); // Simple mm:ss implementation
+      expect(
+        VlcStatus.formatTime(3600),
+        '60:00',
+      ); // Simple mm:ss implementation
     });
 
     test('Progress calculation is correct', () {
@@ -60,7 +63,7 @@ void main() {
         port: 80,
         lastUsed: DateTime.now(),
       );
-      
+
       final conn2 = VlcConnection(
         id: 'abc',
         name: 'Name 2', // Different name

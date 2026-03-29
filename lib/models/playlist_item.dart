@@ -19,13 +19,13 @@ class PlaylistItem {
     // Rimuove il percorso e mantiene solo il nome del file
     final parts = title.split('/');
     String filename = parts.isNotEmpty ? parts.last : title;
-    
+
     // Rimuove l'estensione del file
     final lastDot = filename.lastIndexOf('.');
     if (lastDot > 0) {
       filename = filename.substring(0, lastDot);
     }
-    
+
     return filename;
   }
 
@@ -53,10 +53,10 @@ class PlaylistItem {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is PlaylistItem && 
-           other.id == id && 
-           other.index == index && 
-           other.title == title;
+    return other is PlaylistItem &&
+        other.id == id &&
+        other.index == index &&
+        other.title == title;
   }
 
   @override

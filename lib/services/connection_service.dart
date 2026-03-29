@@ -6,7 +6,7 @@ import '../models/vlc_connection.dart';
 class ConnectionService {
   static const String _connectionsKey = 'vlc_connections';
   static const String _lastConnectionKey = 'last_connection_id';
-  
+
   SharedPreferences? _prefs;
 
   /// Inizializza il servizio
@@ -18,17 +18,17 @@ class ConnectionService {
   Future<bool> saveConnection(VlcConnection connection) async {
     try {
       final connections = await getConnections();
-      
+
       // Rimuovi la connessione esistente con lo stesso ID se presente
       connections.removeWhere((c) => c.id == connection.id);
-      
+
       // Aggiungi la nuova connessione
       connections.add(connection);
-      
+
       // Salva tutte le connessioni
       final jsonList = connections.map((c) => c.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
-      
+
       return await _prefs!.setString(_connectionsKey, jsonString);
     } catch (e) {
       print('Errore durante il salvataggio della connessione: $e');
@@ -43,7 +43,7 @@ class ConnectionService {
       if (jsonString == null || jsonString.isEmpty) {
         return [];
       }
-      
+
       final jsonList = jsonDecode(jsonString) as List<dynamic>;
       return jsonList
           .map((json) => VlcConnection.fromJson(json as Map<String, dynamic>))
@@ -72,10 +72,10 @@ class ConnectionService {
     try {
       final connections = await getConnections();
       connections.removeWhere((c) => c.id == id);
-      
+
       final jsonList = connections.map((c) => c.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
-      
+
       return await _prefs!.setString(_connectionsKey, jsonString);
     } catch (e) {
       print('Errore durante l\'eliminazione della connessione: $e');
@@ -88,14 +88,16 @@ class ConnectionService {
     try {
       final connections = await getConnections();
       final index = connections.indexWhere((c) => c.id == id);
-      
+
       if (index == -1) return false;
-      
-      connections[index] = connections[index].copyWith(lastUsed: DateTime.now());
-      
+
+      connections[index] = connections[index].copyWith(
+        lastUsed: DateTime.now(),
+      );
+
       final jsonList = connections.map((c) => c.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
-      
+
       return await _prefs!.setString(_connectionsKey, jsonString);
     } catch (e) {
       print('Errore durante l\'aggiornamento della data di utilizzo: $e');
@@ -108,16 +110,16 @@ class ConnectionService {
     try {
       final connections = await getConnections();
       final index = connections.indexWhere((c) => c.id == id);
-      
+
       if (index == -1) return false;
-      
+
       connections[index] = connections[index].copyWith(
         isFavorite: !connections[index].isFavorite,
       );
-      
+
       final jsonList = connections.map((c) => c.toJson()).toList();
       final jsonString = jsonEncode(jsonList);
-      
+
       return await _prefs!.setString(_connectionsKey, jsonString);
     } catch (e) {
       print('Errore durante il toggle del preferito: $e');
@@ -151,11 +153,13 @@ class ConnectionService {
     try {
       final lastId = await getLastConnectionId();
       if (lastId == null) return null;
-      
+
       final connections = await getConnections();
       return connections.firstWhere(
         (c) => c.id == lastId,
-        orElse: () => connections.isNotEmpty ? connections.first : throw Exception('No connections'),
+        orElse: () => connections.isNotEmpty
+            ? connections.first
+            : throw Exception('No connections'),
       );
     } catch (e) {
       print('Errore durante il caricamento dell\'ultima connessione: $e');

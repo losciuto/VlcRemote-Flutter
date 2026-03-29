@@ -12,7 +12,7 @@ class PlaylistPanel extends StatelessWidget {
     return Consumer<VlcProvider>(
       builder: (context, provider, _) {
         final playlist = provider.playlist;
-        
+
         return Card(
           elevation: 4,
           child: Padding(
@@ -48,7 +48,9 @@ class PlaylistPanel extends StatelessWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primaryContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -56,7 +58,9 @@ class PlaylistPanel extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
                               ),
                             ),
                           ),
@@ -70,9 +74,9 @@ class PlaylistPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 if (playlist.isEmpty)
                   Center(
                     child: Padding(
@@ -121,20 +125,29 @@ class PlaylistPanel extends StatelessWidget {
   ) {
     final isPlaying = item.isPlaying;
     final conn = provider.currentConnection;
-    
+
     Widget leadingWidget;
-    
-    if (conn != null && conn.vlcPassword != null && conn.vlcPassword!.isNotEmpty) {
+
+    if (conn != null &&
+        conn.vlcPassword != null &&
+        conn.vlcPassword!.isNotEmpty) {
       final host = conn.ipAddress;
       final port = conn.port; // VlcRemote uses same port currently
       final authStr = base64Encode(utf8.encode(':${conn.vlcPassword}'));
-      
-      final String? extractedPosterUrl = isPlaying ? provider.status.posterUrl : null;
-      final bool hasExternalPoster = extractedPosterUrl != null && extractedPosterUrl.startsWith('http');
-      
-      final artUrl = hasExternalPoster ? extractedPosterUrl : 'http://$host:$port/art?item=${item.id}';
-      final Map<String, String>? artHeaders = hasExternalPoster ? null : {'Authorization': 'Basic $authStr'};
-      
+
+      final String? extractedPosterUrl = isPlaying
+          ? provider.status.posterUrl
+          : null;
+      final bool hasExternalPoster =
+          extractedPosterUrl != null && extractedPosterUrl.startsWith('http');
+
+      final artUrl = hasExternalPoster
+          ? extractedPosterUrl
+          : 'http://$host:$port/art?item=${item.id}';
+      final Map<String, String>? artHeaders = hasExternalPoster
+          ? null
+          : {'Authorization': 'Basic $authStr'};
+
       leadingWidget = ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: CachedNetworkImage(
@@ -152,10 +165,17 @@ class PlaylistPanel extends StatelessWidget {
                 context: context,
                 builder: (ctx) => Dialog(
                   backgroundColor: Theme.of(context).colorScheme.surface,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   insetPadding: const EdgeInsets.all(20),
                   child: Container(
-                    padding: const EdgeInsets.only(top: 8, left: 16, right: 16, bottom: 16),
+                    padding: const EdgeInsets.only(
+                      top: 8,
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,7 +202,8 @@ class PlaylistPanel extends StatelessWidget {
                                   imageUrl: artUrl,
                                   httpHeaders: artHeaders,
                                   fit: BoxFit.contain,
-                                  errorWidget: (context, url, error) => const SizedBox.shrink(),
+                                  errorWidget: (context, url, error) =>
+                                      const SizedBox.shrink(),
                                 ),
                               ),
                             ),
@@ -194,11 +215,18 @@ class PlaylistPanel extends StatelessWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 24),
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 24,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   rating,
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),
@@ -220,7 +248,11 @@ class PlaylistPanel extends StatelessWidget {
                           const Center(
                             child: Text(
                               'Nessuna trama nei tag del file',
-                              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 12),
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -232,10 +264,7 @@ class PlaylistPanel extends StatelessWidget {
             },
             child: Container(
               decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: imageProvider,
-                  fit: BoxFit.cover,
-                ),
+                image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
               ),
             ),
           ),
@@ -301,7 +330,9 @@ class PlaylistPanel extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isPlaying
-            ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
+            ? Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.3)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
@@ -312,23 +343,15 @@ class PlaylistPanel extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        leading: SizedBox(
-          width: 40,
-          height: 40,
-          child: leadingWidget,
-        ),
+        leading: SizedBox(width: 40, height: 40, child: leadingWidget),
         title: Text(
           item.displayName,
           style: TextStyle(
             fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
-            color: isPlaying
-                ? Theme.of(context).colorScheme.primary
-                : null,
+            color: isPlaying ? Theme.of(context).colorScheme.primary : null,
           ),
         ),
-        subtitle: item.duration != null
-            ? Text(item.duration!)
-            : null,
+        subtitle: item.duration != null ? Text(item.duration!) : null,
         trailing: isPlaying
             ? Icon(
                 Icons.play_circle_filled,

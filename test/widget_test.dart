@@ -9,7 +9,7 @@ void main() {
 
     // Verify that the app title is present
     expect(find.text('VLC Remote'), findsOneWidget);
-    
+
     // Verify that we see the "not connected" message
     expect(find.text('Non connesso a VLC'), findsOneWidget);
   });

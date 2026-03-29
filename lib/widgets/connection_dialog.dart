@@ -20,13 +20,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   // MyPlaylist controllers
   final _mpIpController = TextEditingController();
   final _mpPortController = TextEditingController(text: '8080');
-  final _mpSecretKeyController = TextEditingController(text: 'my_default_secret_key_32chars_long');
+  final _mpSecretKeyController = TextEditingController(
+    text: 'my_default_secret_key_32chars_long',
+  );
 
   bool _showNewConnectionForm = false;
   VlcConnection? _editingConnection;
   bool _isPasswordVisible = false;
   List<VlcConnection> _savedConnections = [];
-// ...
+  // ...
   void _editConnection(VlcConnection connection) {
     setState(() {
       _editingConnection = connection;
@@ -89,7 +91,10 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Gestione Server VLC',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -239,7 +244,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                           obscureText: true,
                         ),
                         const SizedBox(height: 24),
-                        
+
                         const Divider(),
                         const SizedBox(height: 8),
                         const Text(
@@ -287,8 +292,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                   labelText: 'Secret Key (32 char)',
                                   prefixIcon: const Icon(Icons.key),
                                   suffixIcon: IconButton(
-                                    icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-                                    onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                                    icon: Icon(
+                                      _isPasswordVisible
+                                          ? Icons.visibility
+                                          : Icons.visibility_off,
+                                    ),
+                                    onPressed: () => setState(
+                                      () => _isPasswordVisible =
+                                          !_isPasswordVisible,
+                                    ),
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -315,7 +327,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                     _vlcPasswordController.clear();
                                     _mpIpController.clear();
                                     _mpPortController.text = '8080';
-                                    _mpSecretKeyController.text = 'my_default_secret_key_32chars_long';
+                                    _mpSecretKeyController.text =
+                                        'my_default_secret_key_32chars_long';
                                   });
                                 },
                                 child: const Text('Annulla'),
@@ -325,7 +338,11 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: _saveAndConnect,
-                                child: Text(_editingConnection != null ? 'Salva Modifiche' : 'Salva e Connetti'),
+                                child: Text(
+                                  _editingConnection != null
+                                      ? 'Salva Modifiche'
+                                      : 'Salva e Connetti',
+                                ),
                               ),
                             ),
                           ],
@@ -343,14 +360,17 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   Widget _buildConnectionTile(VlcConnection connection) {
-    final bool isSelected = context.watch<VlcProvider>().currentConnection?.id == connection.id;
-    
+    final bool isSelected =
+        context.watch<VlcProvider>().currentConnection?.id == connection.id;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isSelected ? 4 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isSelected ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2) : BorderSide.none,
+        side: isSelected
+            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
+            : BorderSide.none,
       ),
       child: InkWell(
         onTap: () => _connectTo(connection),
@@ -362,9 +382,11 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
             children: [
               Row(
                 children: [
-                   CircleAvatar(
+                  CircleAvatar(
                     radius: 20,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
                     child: Icon(
                       Icons.computer,
                       size: 20,
@@ -378,19 +400,28 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                       children: [
                         Text(
                           connection.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                         Text(
+                        Text(
                           'VLC: ${connection.ipAddress}:${connection.port}',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (connection.myPlaylistIp != null)
                           Text(
                             'MP: ${connection.myPlaylistIp}:${connection.myPlaylistPort ?? 8080}',
-                            style: const TextStyle(fontSize: 10, color: Colors.blue),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.blue,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],
@@ -403,7 +434,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   _buildSmallActionBtn(
-                    icon: connection.isFavorite ? Icons.star : Icons.star_border,
+                    icon: connection.isFavorite
+                        ? Icons.star
+                        : Icons.star_border,
                     color: connection.isFavorite ? Colors.amber : Colors.grey,
                     onPressed: () async {
                       final provider = context.read<VlcProvider>();
@@ -432,7 +465,11 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     );
   }
 
-  Widget _buildSmallActionBtn({required IconData icon, required Color color, required VoidCallback onPressed}) {
+  Widget _buildSmallActionBtn({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
     return Material(
       color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
@@ -477,16 +514,24 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     }
 
     final connection = VlcConnection(
-      id: _editingConnection?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          _editingConnection?.id ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       ipAddress: ip,
       port: int.parse(portStr),
       lastUsed: DateTime.now(),
       isFavorite: _editingConnection?.isFavorite ?? false,
-      vlcPassword: _vlcPasswordController.text.trim().isNotEmpty ? _vlcPasswordController.text.trim() : null,
-      myPlaylistIp: _mpIpController.text.trim().isNotEmpty ? _mpIpController.text.trim() : null,
+      vlcPassword: _vlcPasswordController.text.trim().isNotEmpty
+          ? _vlcPasswordController.text.trim()
+          : null,
+      myPlaylistIp: _mpIpController.text.trim().isNotEmpty
+          ? _mpIpController.text.trim()
+          : null,
       myPlaylistPort: int.tryParse(_mpPortController.text.trim()),
-      myPlaylistSecretKey: _mpSecretKeyController.text.trim().isNotEmpty ? _mpSecretKeyController.text.trim() : null,
+      myPlaylistSecretKey: _mpSecretKeyController.text.trim().isNotEmpty
+          ? _mpSecretKeyController.text.trim()
+          : null,
     );
 
     final provider = context.read<VlcProvider>();
@@ -520,7 +565,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Impossibile connettersi a ${connection.name} (${connection.ipAddress})'),
+            content: Text(
+              'Impossibile connettersi a ${connection.name} (${connection.ipAddress})',
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
@@ -540,13 +587,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     if (!ipPattern.hasMatch(ip)) {
       return false;
     }
-    
+
     // Controllo manuale di ogni octetto per valori 0-255 e assenza di leading zero non validi (es. 01)
     final octets = ip.split('.');
     for (final octet in octets) {
       if (octet.isEmpty) return false;
-      if (octet.length > 1 && octet.startsWith('0')) return false; // "01" non è valido
-      
+      if (octet.length > 1 && octet.startsWith('0')) {
+        return false; // "01" non è valido
+      }
+
       final value = int.tryParse(octet);
       if (value == null || value < 0 || value > 255) {
         return false;

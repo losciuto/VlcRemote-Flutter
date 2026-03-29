@@ -10,7 +10,7 @@ class NowPlayingCard extends StatelessWidget {
     return Consumer<VlcProvider>(
       builder: (context, provider, _) {
         final status = provider.status;
-        
+
         return Card(
           elevation: 4,
           child: Padding(
@@ -22,7 +22,9 @@ class NowPlayingCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      status.isPlaying ? Icons.play_circle_filled : Icons.pause_circle_filled,
+                      status.isPlaying
+                          ? Icons.play_circle_filled
+                          : Icons.pause_circle_filled,
                       color: status.isPlaying ? Colors.green : Colors.orange,
                       size: 32,
                     ),
@@ -54,12 +56,10 @@ class NowPlayingCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
               ],
             ),
           ),
         );
-
       },
     );
   }
