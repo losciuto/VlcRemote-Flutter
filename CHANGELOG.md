@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 
-## [2.7.1] - 2026-03-29
+## [2.7.3] - 2026-03-29
 
 ### Added
 - **Manual Release Trigger**: Added `workflow_dispatch` to GitHub Actions, allowing users to trigger a build and release with a custom version tag directly from the GitHub UI.
