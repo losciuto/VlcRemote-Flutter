@@ -3,7 +3,7 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
-## [2.8.0] - 2026-03-29
+## [2.7.1] - 2026-03-29
 
 ### Nuove Funzionalità
 - **Trigger Release Manuale**: Aggiunta la possibilità di avviare il build e la creazione della release direttamente dalla UI di GitHub via `workflow_dispatch`, con inserimento manuale della versione.
