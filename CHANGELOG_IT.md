@@ -7,10 +7,12 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 
 ### Nuove Funzionalità
 - **Trigger Release Manuale**: Aggiunta la possibilità di avviare il build e la creazione della release direttamente dalla UI di GitHub via `workflow_dispatch`, con inserimento manuale della versione.
+- **Controllo Aggiornamenti Automatico**: L'app ora verifica automaticamente la presenza di nuove versioni su GitHub all'avvio e suggerisce l'aggiornamento.
 
 ### Correzioni e Manutenzione
 - **Ottimizzazione CI/CD**: Risolti i problemi di formattazione e linting (parentesi graffe mancanti) che bloccavano la pipeline di test.
 - **Affidabilità Workflow**: Migliorata la stabilità delle GitHub Actions e aggiunto il tasto "Run workflow" per test manuali.
+
 
 ## [2.7.0] - 2026-03-27
 

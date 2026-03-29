@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Manual Release Trigger**: Added `workflow_dispatch` to GitHub Actions, allowing users to trigger a build and release with a custom version tag directly from the GitHub UI.
+- **Auto-Update Checker**: The app now automatically checks for new versions on GitHub at startup and prompts the user to update.
 
 ### Fixed
 - **CI/CD Optimization**: Fixed code formatting and linting issues (missing curly braces) that were blocking the automated test pipeline.

@@ -6,10 +6,39 @@ import '../widgets/control_panel.dart';
 import '../widgets/now_playing_card.dart';
 import '../widgets/playlist_panel.dart';
 import '../widgets/my_playlist_panel.dart';
+import '../widgets/update_dialog.dart';
+import '../services/update_service.dart';
 import '../config/app_config.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Controlla gli aggiornamenti dopo che il frame è stato renderizzato
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForUpdates();
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    final updateService = UpdateService();
+    final release = await updateService.checkUpdate();
+
+    if (release != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => UpdateDialog(release: release),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +472,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Versione Flutter migliorata - Gennaio 2026',
+              'Versione Flutter migliorata - Marzo 2026',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
