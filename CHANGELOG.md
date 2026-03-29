@@ -3,10 +3,21 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.8.0] - 2026-03-29
+
+### Added
+- **Manual Release Trigger**: Added `workflow_dispatch` to GitHub Actions, allowing users to trigger a build and release with a custom version tag directly from the GitHub UI.
+
+### Fixed
+- **CI/CD Optimization**: Fixed code formatting and linting issues (missing curly braces) that were blocking the automated test pipeline.
+- **Workflow Reliability**: Improved GitHub Actions stability and added a "Run workflow" button for manual testing.
+
 ## [2.7.0] - 2026-03-27
 
 ### Added
-- **Poster Support**: Added rich visual playlists using `cached_network_image`. The app now renders movie posters injected from MyPlaylist's proxy server for Smart Actions, and leverages VLC's native `/art` HTTP API to show album arts for the active playlist.
+- **Poster & Zoom Support**: Added rich visual playlists using `cached_network_image`. The app now renders movie posters injected from MyPlaylist's proxy server and leverages VLC's native `/art` API.
+- **Interactive Zoom**: Users can now tap on posters to view a full-screen, high-resolution version with a smooth zoom animation.
+
 
 ## [2.5.0] - 2026-03-27
 

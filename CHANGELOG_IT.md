@@ -3,10 +3,21 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
-## [2.6.0] - 2026-03-27
+## [2.8.0] - 2026-03-29
 
 ### Nuove Funzionalità
-- **Visualizzazione Locandine**: Integrazione avanzata con `cached_network_image` per visualizzare i poster e le cover nativamente sull'app, sia elaborando le "Smart Actions" (dal server proxy di MyPlaylist) sia leggendo la scaletta attiva da VLC (tramite l'API `/art`).
+- **Trigger Release Manuale**: Aggiunta la possibilità di avviare il build e la creazione della release direttamente dalla UI di GitHub via `workflow_dispatch`, con inserimento manuale della versione.
+
+### Correzioni e Manutenzione
+- **Ottimizzazione CI/CD**: Risolti i problemi di formattazione e linting (parentesi graffe mancanti) che bloccavano la pipeline di test.
+- **Affidabilità Workflow**: Migliorata la stabilità delle GitHub Actions e aggiunto il tasto "Run workflow" per test manuali.
+
+## [2.7.0] - 2026-03-27
+
+### Nuove Funzionalità
+- **Visualizzazione Locandine**: Integrazione avanzata con `cached_network_image` per visualizzare i poster e le cover nativamente sull'app, sia dal server proxy di MyPlaylist sia tramite l'API `/art` di VLC.
+- **Poster Zoom Interattivo**: Implementata la possibilità di toccare una locandina per vederla a tutto schermo con un'animazione di zoom fluida.
+
 
 ## [2.5.0] - 2026-03-27
 
