@@ -3,7 +3,7 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
-## [2.7.1] - 2026-03-29
+## [2.7.3] - 29/03/2026
 
 ### Nuove Funzionalità
 - **Trigger Release Manuale**: Aggiunta la possibilità di avviare il build e la creazione della release direttamente dalla UI di GitHub via `workflow_dispatch`, con inserimento manuale della versione.
@@ -14,14 +14,14 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 - **Affidabilità Workflow**: Migliorata la stabilità delle GitHub Actions e aggiunto il tasto "Run workflow" per test manuali.
 
 
-## [2.7.0] - 2026-03-27
+## [2.7.0] - 27/03/2026
 
 ### Nuove Funzionalità
 - **Visualizzazione Locandine**: Integrazione avanzata con `cached_network_image` per visualizzare i poster e le cover nativamente sull'app, sia dal server proxy di MyPlaylist sia tramite l'API `/art` di VLC.
 - **Poster Zoom Interattivo**: Implementata la possibilità di toccare una locandina per vederla a tutto schermo con un'animazione di zoom fluida.
 
 
-## [2.5.0] - 2026-03-27
+## [2.5.0] - 27/03/2026
 
 ### Nuove Funzionalità
 - **Supporto VLC HTTP API**: Aggiunta la possibilità di comunicare con VLC tramite l'interfaccia HTTP. Questa modalità (che richiede la configurazione di una password per VLC nel server) è notevolmente più affidabile rispetto al vecchio metodo via Socket (RC string parsing), prevenendo errori di lettura della playlist e desincronizzazioni dello stato quando il titolo o il file video contengono caratteri speciali o formati non standard.
@@ -32,7 +32,7 @@ Tutti i cambiamenti significativi a questo progetto saranno documentati in quest
 - **Pulizia Codice**: Rimossi campi inutilizzati e riferimenti deprecati in linea con le ultime analisi Flutter.
 - **Material 3 Update**: Aggiornati i componenti UI che utilizzavano membri deprecati (es. `surfaceVariant` → `surfaceContainerHighest`).
 
-## [2.4.0] - 2026-03-26
+## [2.4.0] - 26/03/2026
 
 ### Aggiunto
 - **Kill VLC**: Aggiunta funzionalità per terminare forzatamente tutte le istanze di VLC (sia locali che remote tramite MyPlaylist).
