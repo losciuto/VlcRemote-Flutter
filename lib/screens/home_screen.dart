@@ -47,10 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.play_circle_outline,
-              color: Theme.of(context).colorScheme.primary,
-              size: 28,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset('assets/icon/icon.png', width: 32, height: 32),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -449,6 +448,13 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset('assets/icon/icon.png', height: 80),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'VLC Remote Flutter',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

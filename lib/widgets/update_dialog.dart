@@ -96,10 +96,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
-          Icon(
-            _isDownloading ? Icons.download : Icons.system_update,
-            color: Theme.of(context).colorScheme.primary,
-            size: 28,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset('assets/icon/icon.png', width: 36, height: 36),
           ),
           const SizedBox(width: 12),
           const Expanded(child: Text('Nuovo Aggiornamento')),
