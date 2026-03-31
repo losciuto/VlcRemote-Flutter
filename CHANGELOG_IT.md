@@ -3,6 +3,12 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
+## [2.7.4] - 31/03/2026
+
+### Nuove Funzionalità
+- **Persistenza Filtri Smart Playlist**: L'app ora memorizza l'ultimo set di filtri (generi, anni, rating, ecc.) utilizzato per generare le playlist.
+- **Reset Filtri**: Aggiunto un pulsante "Reset" nel dialogo dei filtri per pulire rapidamente tutti i campi e la memoria persistente.
+
 ## [2.7.3] - 29/03/2026
 
 ### Nuove Funzionalità

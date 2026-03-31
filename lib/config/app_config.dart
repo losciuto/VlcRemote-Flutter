@@ -1,7 +1,7 @@
 /// Configurazione dell'applicazione VLC Remote
 class AppConfig {
   // Versione dell'app
-  static const String appVersion = '2.7.3';
+  static const String appVersion = '2.7.4';
   static const String appBuildNumber = '1';
 
   // Impostazioni di connessione

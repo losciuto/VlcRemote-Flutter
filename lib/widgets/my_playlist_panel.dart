@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/vlc_provider.dart';
+import '../models/filter_settings.dart';
 
 class MyPlaylistPanel extends StatefulWidget {
   const MyPlaylistPanel({super.key});
@@ -302,16 +303,26 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
   }
 
   void _showFilterDialog(BuildContext context, VlcProvider provider) {
-    final genresController = TextEditingController();
-    final excludedGenresController = TextEditingController();
-    final yearController = TextEditingController();
-    final excludedYearController = TextEditingController();
-    final actorsController = TextEditingController();
-    final excludedActorsController = TextEditingController();
-    final directorsController = TextEditingController();
-    final excludedDirectorsController = TextEditingController();
-    final limitController = TextEditingController(text: '10');
-    double minRating = 0.0;
+    final last = provider.lastFilterSettings;
+
+    final genresController =
+        TextEditingController(text: last?.genres.join(', ') ?? '');
+    final excludedGenresController =
+        TextEditingController(text: last?.excludedGenres.join(', ') ?? '');
+    final yearController = TextEditingController(text: last?.years.join(', ') ?? '');
+    final excludedYearController =
+        TextEditingController(text: last?.excludedYears.join(', ') ?? '');
+    final actorsController =
+        TextEditingController(text: last?.actors.join(', ') ?? '');
+    final excludedActorsController =
+        TextEditingController(text: last?.excludedActors.join(', ') ?? '');
+    final directorsController =
+        TextEditingController(text: last?.directors.join(', ') ?? '');
+    final excludedDirectorsController =
+        TextEditingController(text: last?.excludedDirectors.join(', ') ?? '');
+    final limitController =
+        TextEditingController(text: (last?.limit ?? 10).toString());
+    double minRating = last?.ratingMin ?? 0.0;
 
     showDialog(
       context: context,
@@ -472,6 +483,25 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
           ),
           actions: [
             TextButton(
+              onPressed: () {
+                setState(() {
+                  genresController.clear();
+                  excludedGenresController.clear();
+                  yearController.clear();
+                  excludedYearController.clear();
+                  actorsController.clear();
+                  excludedActorsController.clear();
+                  directorsController.clear();
+                  excludedDirectorsController.clear();
+                  limitController.text = '10';
+                  minRating = 0.0;
+                });
+                provider.setLastFilterSettings(null);
+              },
+              child: const Text('Reset', style: TextStyle(color: Colors.red)),
+            ),
+            const Spacer(),
+            TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Annulla'),
             ),
@@ -493,23 +523,33 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                 final excludedDirectors = split(
                   excludedDirectorsController.text,
                 );
-                final limit = int.tryParse(limitController.text);
+                final limit = int.tryParse(limitController.text) ?? 10;
+
+                // Save settings
+                final settings = FilterSettings(
+                  genres: genres,
+                  years: years,
+                  ratingMin: minRating,
+                  actors: actors,
+                  directors: directors,
+                  excludedGenres: excludedGenres,
+                  excludedYears: excludedYears,
+                  excludedActors: excludedActors,
+                  excludedDirectors: excludedDirectors,
+                  limit: limit,
+                );
+                provider.setLastFilterSettings(settings);
 
                 provider.mpGenerateFiltered(
                   genres: genres.isEmpty ? null : genres,
-                  excludedGenres: excludedGenres.isEmpty
-                      ? null
-                      : excludedGenres,
+                  excludedGenres: excludedGenres.isEmpty ? null : excludedGenres,
                   years: years.isEmpty ? null : years,
                   excludedYears: excludedYears.isEmpty ? null : excludedYears,
                   actors: actors.isEmpty ? null : actors,
-                  excludedActors: excludedActors.isEmpty
-                      ? null
-                      : excludedActors,
+                  excludedActors: excludedActors.isEmpty ? null : excludedActors,
                   directors: directors.isEmpty ? null : directors,
-                  excludedDirectors: excludedDirectors.isEmpty
-                      ? null
-                      : excludedDirectors,
+                  excludedDirectors:
+                      excludedDirectors.isEmpty ? null : excludedDirectors,
                   minRating: minRating > 0 ? minRating : null,
                   limit: limit,
                   preview: _previewMode,

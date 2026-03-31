@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 
 
+## [2.7.4] - 2026-03-31
+
+### Added
+- **Smart Playlist Filter Persistence**: The app now remembers the last set of filters (genres, years, rating, etc.) used to generate playlists.
+- **Filter Reset**: Added a "Reset" button in the filter dialog to quickly clear all fields and persistent memory.
+
 ## [2.7.3] - 2026-03-29
 
 ### Added

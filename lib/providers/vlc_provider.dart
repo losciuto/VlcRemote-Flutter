@@ -8,6 +8,8 @@ import '../services/vlc_service.dart';
 import '../services/vlc_http_service.dart';
 import '../services/connection_service.dart';
 import '../services/my_playlist_service.dart';
+import '../services/settings_service.dart';
+import '../models/filter_settings.dart';
 import '../constants/app_constants.dart';
 
 /// Provider per gestire lo stato dell'applicazione VLC Remote
@@ -16,6 +18,7 @@ class VlcProvider with ChangeNotifier {
   final VlcHttpService _vlcHttpService = VlcHttpService();
   final ConnectionService _connectionService = ConnectionService();
   final MyPlaylistService _myPlaylistService = MyPlaylistService();
+  final SettingsService _settingsService = SettingsService();
 
   VlcConnection? _currentConnection;
   VlcStatus _status = VlcStatus();
@@ -34,6 +37,7 @@ class VlcProvider with ChangeNotifier {
   Timer? _statusUpdateTimer;
   int _reconnectAttempts = 0;
   int _statusUpdateRetries = 0;
+  FilterSettings? _lastFilterSettings;
 
   // Debouncing
   Timer? _volumeDebounceTimer;
@@ -60,6 +64,7 @@ class VlcProvider with ChangeNotifier {
       _currentConnection?.myPlaylistSecretKey != null;
   bool get isReconnecting => _isReconnecting;
   double get reconnectionProgress => _reconnectionProgress;
+  FilterSettings? get lastFilterSettings => _lastFilterSettings;
 
   VlcProvider() {
     _init();
@@ -68,6 +73,9 @@ class VlcProvider with ChangeNotifier {
   /// Inizializza il provider
   Future<void> _init() async {
     await _connectionService.init();
+    await _settingsService.init();
+
+    _lastFilterSettings = _settingsService.getFilterSettings();
 
     // Prova a connettersi all'ultima connessione utilizzata
     final lastConnection = await _connectionService.getLastConnection();
@@ -652,6 +660,12 @@ class VlcProvider with ChangeNotifier {
 
   Future<bool> toggleFavorite(String id) async {
     return await _connectionService.toggleFavorite(id);
+  }
+
+  Future<void> setLastFilterSettings(FilterSettings? settings) async {
+    _lastFilterSettings = settings;
+    await _settingsService.saveFilterSettings(settings);
+    notifyListeners();
   }
 
   @override
