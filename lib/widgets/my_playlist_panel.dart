@@ -305,23 +305,33 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
   void _showFilterDialog(BuildContext context, VlcProvider provider) {
     final last = provider.lastFilterSettings;
 
-    final genresController =
-        TextEditingController(text: last?.genres.join(', ') ?? '');
-    final excludedGenresController =
-        TextEditingController(text: last?.excludedGenres.join(', ') ?? '');
-    final yearController = TextEditingController(text: last?.years.join(', ') ?? '');
-    final excludedYearController =
-        TextEditingController(text: last?.excludedYears.join(', ') ?? '');
-    final actorsController =
-        TextEditingController(text: last?.actors.join(', ') ?? '');
-    final excludedActorsController =
-        TextEditingController(text: last?.excludedActors.join(', ') ?? '');
-    final directorsController =
-        TextEditingController(text: last?.directors.join(', ') ?? '');
-    final excludedDirectorsController =
-        TextEditingController(text: last?.excludedDirectors.join(', ') ?? '');
-    final limitController =
-        TextEditingController(text: (last?.limit ?? 10).toString());
+    final genresController = TextEditingController(
+      text: last?.genres.join(', ') ?? '',
+    );
+    final excludedGenresController = TextEditingController(
+      text: last?.excludedGenres.join(', ') ?? '',
+    );
+    final yearController = TextEditingController(
+      text: last?.years.join(', ') ?? '',
+    );
+    final excludedYearController = TextEditingController(
+      text: last?.excludedYears.join(', ') ?? '',
+    );
+    final actorsController = TextEditingController(
+      text: last?.actors.join(', ') ?? '',
+    );
+    final excludedActorsController = TextEditingController(
+      text: last?.excludedActors.join(', ') ?? '',
+    );
+    final directorsController = TextEditingController(
+      text: last?.directors.join(', ') ?? '',
+    );
+    final excludedDirectorsController = TextEditingController(
+      text: last?.excludedDirectors.join(', ') ?? '',
+    );
+    final limitController = TextEditingController(
+      text: (last?.limit ?? 10).toString(),
+    );
     double minRating = last?.ratingMin ?? 0.0;
 
     showDialog(
@@ -542,14 +552,19 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
 
                 provider.mpGenerateFiltered(
                   genres: genres.isEmpty ? null : genres,
-                  excludedGenres: excludedGenres.isEmpty ? null : excludedGenres,
+                  excludedGenres: excludedGenres.isEmpty
+                      ? null
+                      : excludedGenres,
                   years: years.isEmpty ? null : years,
                   excludedYears: excludedYears.isEmpty ? null : excludedYears,
                   actors: actors.isEmpty ? null : actors,
-                  excludedActors: excludedActors.isEmpty ? null : excludedActors,
+                  excludedActors: excludedActors.isEmpty
+                      ? null
+                      : excludedActors,
                   directors: directors.isEmpty ? null : directors,
-                  excludedDirectors:
-                      excludedDirectors.isEmpty ? null : excludedDirectors,
+                  excludedDirectors: excludedDirectors.isEmpty
+                      ? null
+                      : excludedDirectors,
                   minRating: minRating > 0 ? minRating : null,
                   limit: limit,
                   preview: _previewMode,

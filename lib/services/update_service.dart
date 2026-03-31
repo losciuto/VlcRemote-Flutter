@@ -47,9 +47,9 @@ class UpdateService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
-      final response = await http.get(Uri.parse(_repoUrl)).timeout(
-        const Duration(seconds: 5),
-      );
+      final response = await http
+          .get(Uri.parse(_repoUrl))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
@@ -73,8 +73,14 @@ class UpdateService {
 
   /// Compara due versioni semantiche (es: 2.8.1 e 2.8.0)
   bool _isVersionGreater(String latest, String current) {
-    final latestParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    final currentParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final latestParts = latest
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList();
+    final currentParts = current
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList();
 
     for (var i = 0; i < 3; i++) {
       final latestPart = (latestParts.length > i) ? latestParts[i] : 0;
