@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:open_file_plus/open_file_plus.dart';
+import 'package:open_filex/open_filex.dart';
 import '../services/update_service.dart';
 
 class UpdateDialog extends StatefulWidget {
@@ -71,7 +71,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       await file.writeAsBytes(bytes);
 
       // Apri l'APK per l'installazione
-      final result = await OpenFile.open(apkPath);
+      final result = await OpenFilex.open(apkPath);
 
       if (result.type != ResultType.done) {
         throw Exception(
