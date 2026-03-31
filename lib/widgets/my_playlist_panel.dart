@@ -510,7 +510,6 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
               },
               child: const Text('Reset', style: TextStyle(color: Colors.red)),
             ),
-            const Spacer(),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Annulla'),
