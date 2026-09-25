@@ -3,6 +3,22 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
+## [2.7.5] - 25/09/2026
+
+### Modificato
+- **Aggiornamento Dipendenze**: Aggiornati 35 pacchetti inclusi `package_info_plus` (9.0.0 → 9.0.1), `path_provider` (2.1.5 → 2.1.6), `xml` (6.6.1 → 7.0.1), `intl` (0.20.2 → 0.20.3), e dipendenze transitive (`url_launcher`, `shared_preferences`, `sqflite`, `ffi`).
+- **Pulizia Pubspec**: Rimossa la voce duplicata `flutter_launcher_icons` in `pubspec.yaml`.
+
+### Aggiunto
+- **Copertura Test**: Aggiunto `test/playlist_item_test.dart` (6 test) per il modello `PlaylistItem` (displayName, copyWith, equality, valori default).
+- **Copertura Test**: Aggiunto `test/filter_settings_test.dart` (4 test) per il modello `FilterSettings` (valori default, round-trip JSON, gestione null).
+- **Dipendenza Dev**: Aggiunto `mockito: ^5.6.4` per test unitari futuri.
+
+### Metriche
+- Test totali: 17/17 passanti
+- `flutter analyze lib/`: Nessun problema rilevato
+
+
 ## [2.7.4] - 31/03/2026
 
 ### Nuove Funzionalità
