@@ -22,34 +22,29 @@ dependencies:
   shared_preferences: ^2.5.5
 
   # Version & Updates
-  package_info_plus: ^9.0.0
+  package_info_plus: ^9.0.1
   url_launcher: ^6.3.0
-  path_provider: ^2.1.2
+  path_provider: ^2.1.6
   open_filex: ^4.7.0
-
 
   # Networking
   http: ^1.2.2
-  xml: ^6.5.0
+  xml: ^7.0.1
 
   # Network Discovery
   network_info_plus: ^7.0.0
 
   # Utilities
-  intl: ^0.20.2
+  intl: ^0.20.3
   cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  mockito: ^5.6.4
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -65,8 +60,6 @@ flutter_launcher_icons:
     generate: true
     image_path: "assets/icon/icon.png"
     icon_size: 48
-
-  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
