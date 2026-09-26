@@ -37,6 +37,8 @@ dependencies:
   # Utilities
   intl: ^0.20.3
   cryptography: ^2.9.0
+  crypto: ^3.0.6
+  flutter_secure_storage: ^10.3.4
 
 dev_dependencies:
   flutter_test:

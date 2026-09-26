@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import '../services/update_service.dart';
@@ -16,14 +15,14 @@ class UpdateDialog extends StatefulWidget {
 }
 
 class _UpdateDialogState extends State<UpdateDialog> {
+  final UpdateService _updateService = UpdateService();
+
   bool _isDownloading = false;
   String? _errorMessage;
   double? _downloadProgress;
 
   Future<void> _startUpdate() async {
-    final apkUrl = widget.release.apkUrl;
-
-    if (apkUrl == null || !Platform.isAndroid) {
+    if (widget.release.apkUrl == null || !Platform.isAndroid) {
       // Fallback per iOS o se non c'è l'APK diretto
       final url = Uri.parse(widget.release.htmlUrl);
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
@@ -42,33 +41,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
+      // Il download, la verifica dell'impronta SHA-256 e il limite di
+      // dimensione stanno nel servizio: il widget non deve poter installare
+      // un APK senza che sia stato verificato.
       final tempDir = await getTemporaryDirectory();
-      final apkPath = '${tempDir.path}/VlcRemote_update.apk';
-      final file = File(apkPath);
-
-      // Download con progresso
-      final request = http.Request('GET', Uri.parse(apkUrl));
-      final response = await http.Client().send(request);
-
-      if (response.statusCode != 200) {
-        throw Exception('Errore download: ${response.statusCode}');
-      }
-
-      final contentLength = response.contentLength;
-      final List<int> bytes = [];
-      int downloaded = 0;
-
-      await for (final List<int> chunk in response.stream) {
-        bytes.addAll(chunk);
-        downloaded += chunk.length;
-        if (contentLength != null) {
-          setState(() {
-            _downloadProgress = downloaded / contentLength;
-          });
-        }
-      }
-
-      await file.writeAsBytes(bytes);
+      final apkPath = await _updateService.downloadVerifiedApk(
+        widget.release,
+        targetDirectory: tempDir,
+        onProgress: (progress) {
+          if (mounted) setState(() => _downloadProgress = progress);
+        },
+      );
 
       // Apri l'APK per l'installazione
       final result = await OpenFilex.open(apkPath);
@@ -80,6 +63,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
       }
 
       if (mounted) Navigator.of(context).pop();
+    } on UpdateVerificationException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _errorMessage = e.message;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {

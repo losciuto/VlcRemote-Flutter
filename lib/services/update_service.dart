@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import '../constants/app_constants.dart';
 
 /// Confronta due versioni semantiche.
 ///
@@ -106,4 +109,148 @@ class UpdateService {
     }
     return null;
   }
+
+  /// Scarica l'APK del rilascio verificandone l'impronta SHA-256.
+  ///
+  /// L'impronta attesa viene letta dall'asset `<apk>.sha256` della stessa
+  /// release GitHub. **Se quell'asset non esiste il download viene rifiutato**:
+  /// senza un'impronta non c'è nulla a cui agganciare l'integrità del file, e un
+  /// APK scaricato e installato al volo è un vettore di esecuzione di codice
+  /// arbitrario. In quel caso l'utente può sempre installare la release dal
+  /// browser, dove la firma viene verificata dal sistema.
+  ///
+  /// Il download scrive su file invece di accumulare tutto in memoria, e rifiuta
+  /// i file più grandi di [AppConstants.maxApkSizeBytes].
+  ///
+  /// Restituisce il percorso del file verificato. [onProgress] riceve un valore
+  /// da 0 a 1 quando la lunghezza totale è nota.
+  Future<String> downloadVerifiedApk(
+    GitHubRelease release, {
+    required Directory targetDirectory,
+    void Function(double? progress)? onProgress,
+  }) async {
+    final apkUrl = release.apkUrl;
+    if (apkUrl == null) {
+      throw UpdateVerificationException('Il rilascio non contiene un APK');
+    }
+
+    final expectedHash = await _fetchExpectedHash(apkUrl);
+    if (expectedHash == null) {
+      throw const UpdateVerificationException(
+        'Il rilascio non pubblica l\'impronta SHA-256 '
+        '(${AppConstants.apkChecksumSuffix}): installazione rifiutata per '
+        'sicurezza. Usa il download manuale dalla pagina del rilascio.',
+      );
+    }
+
+    final client = http.Client();
+    File? partial;
+    try {
+      final request = http.Request('GET', Uri.parse(apkUrl));
+      final response = await client
+          .send(request)
+          .timeout(
+            const Duration(milliseconds: AppConstants.updateDownloadTimeoutMs),
+          );
+
+      if (response.statusCode != 200) {
+        throw UpdateVerificationException(
+          'Download fallito: HTTP ${response.statusCode}',
+        );
+      }
+
+      final contentLength = response.contentLength;
+      if (contentLength != null &&
+          contentLength > AppConstants.maxApkSizeBytes) {
+        throw UpdateVerificationException(
+          'APK troppo grande (${contentLength ~/ (1024 * 1024)} MB, '
+          'massimo ${AppConstants.maxApkSizeBytes ~/ (1024 * 1024)} MB)',
+        );
+      }
+
+      final target = File('${targetDirectory.path}/VlcRemote_update.apk');
+      // Scriviamo in un file temporaneo: se l'hash non torna, il file scaricato
+      // non deve restare sul disco pronto per essere installato.
+      partial = File('${target.path}.part');
+
+      var downloaded = 0;
+      final sink = partial.openWrite();
+      try {
+        await for (final chunk in response.stream) {
+          downloaded += chunk.length;
+          if (downloaded > AppConstants.maxApkSizeBytes) {
+            throw UpdateVerificationException(
+              'APK troppo grande: interrotto a $downloaded byte',
+            );
+          }
+          sink.add(chunk);
+          if (contentLength != null && contentLength > 0) {
+            onProgress?.call(downloaded / contentLength);
+          }
+        }
+      } finally {
+        await sink.close();
+      }
+
+      // L'hash si calcola rileggendo il file a blocchi: niente APK da 30 MB
+      // in memoria.
+      final actualHash = (await crypto.sha256.bind(partial.openRead()).first)
+          .toString();
+
+      if (actualHash != expectedHash) {
+        throw UpdateVerificationException(
+          'Impronta SHA-256 non corrispondente: attesa $expectedHash, '
+          'ottenuta $actualHash. File scartato.',
+        );
+      }
+
+      if (partial.existsSync()) {
+        if (target.existsSync()) target.deleteSync();
+        partial.renameSync(target.path);
+      }
+      partial = null;
+      onProgress?.call(1);
+      return target.path;
+    } finally {
+      client.close();
+      if (partial != null && partial.existsSync()) {
+        // Hash non corrispondente o download interrotto: niente file a metà.
+        try {
+          partial.deleteSync();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Legge l'asset `<apk>.sha256` e ne estrae l'impronta.
+  Future<String?> _fetchExpectedHash(String apkUrl) async {
+    final checksumUrl = '$apkUrl${AppConstants.apkChecksumSuffix}';
+    try {
+      final response = await http
+          .get(Uri.parse(checksumUrl))
+          .timeout(
+            const Duration(milliseconds: AppConstants.updateChecksumTimeoutMs),
+          );
+
+      if (response.statusCode != 200) return null;
+
+      // Formato atteso: "<64 caratteri esadecimali>  <nomefile>", come sha256sum.
+      final match = RegExp(r'\b([0-9a-fA-F]{64})\b').firstMatch(response.body);
+      if (match == null) return null;
+      return match.group(1)!.toLowerCase();
+    } catch (e) {
+      print('[UpdateService] Impossibile leggere l\'impronta SHA-256: $e');
+      return null;
+    }
+  }
+}
+
+/// Errore di integrita' o di download dell'aggiornamento.
+class UpdateVerificationException implements Exception {
+  final String message;
+
+  const UpdateVerificationException(this.message);
+
+  @override
+  String toString() => message;
 }

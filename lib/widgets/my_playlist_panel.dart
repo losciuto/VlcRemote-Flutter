@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/app_constants.dart';
 import '../providers/vlc_provider.dart';
+import '../services/my_playlist_service.dart';
 import '../models/filter_settings.dart';
 
 class MyPlaylistPanel extends StatefulWidget {
@@ -618,12 +619,20 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                     final String? rawPoster = item['posterPath'];
 
                     Widget leadingWidget;
-                    if (videoId != null && ip.isNotEmpty) {
-                      final imageUrl =
-                          (rawPoster != null && rawPoster.startsWith('http'))
-                          ? rawPoster
-                          : 'http://$ip:$port/poster/$videoId';
+                    // L'id arriva dal server: l'URL viene costruito con Uri,
+                    // che codifica il percorso e rifiuta un host non valido.
+                    final imageUrl =
+                        (rawPoster != null && rawPoster.startsWith('http'))
+                        ? rawPoster
+                        : (videoId != null && ip.isNotEmpty
+                              ? MyPlaylistService.posterUri(
+                                  host: ip,
+                                  port: port,
+                                  videoId: videoId,
+                                )?.toString()
+                              : null);
 
+                    if (imageUrl != null) {
                       leadingWidget = ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: CachedNetworkImage(
@@ -771,6 +780,8 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                         ),
                       );
                     } else {
+                      // URL non utilizzabile: host non valido, id assente o
+                      // percorso non costruibile.
                       leadingWidget = isSeries
                           ? const CircleAvatar(
                               backgroundColor: Colors.blueGrey,

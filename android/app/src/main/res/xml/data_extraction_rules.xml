@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Regole di backup dei dati dell'app.
+
+  I segreti (password di VLC e secret key di MyPlaylist) NON vengono salvati in
+  SharedPreferences ma in storage sicuro (flutter_secure_storage), che su Android
+  usa l'Android Keystore. Le chiavi del Keystore non sono esportabili e non
+  vengono incluse nel backup: se il backup contenesse i file cifrati senza le
+  corrispondenti chiavi, al ripristino l'app si troverebbe segreti illeggibili.
+
+  Escludiamo quindi i file di preferenze condivise, dove shared_preferences
+  mantiene le connessioni salvate e dove versioni precedenti dell'app potrebbero
+  aver lasciato segreti in chiaro.
+
+  La lista e' in stile glob perche' le librerie usano nomi diversi da una
+  versione all'altra dell'app.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" />
+        <exclude domain="database" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" />
+        <exclude domain="database" />
+    </device-transfer>
+</data-extraction-rules>

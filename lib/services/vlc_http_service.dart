@@ -43,6 +43,32 @@ class VlcHttpService {
     return Uri.parse('http://$_host:$_port$path');
   }
 
+  /// URL di una copertina della playlist di VLC.
+  ///
+  /// Costruito con [Uri] invece che per interpolazione: l'id arriva dal server e
+  /// va codificato come query parameter, altrimenti un valore manipolato
+  /// potrebbe cambiare il significato dell'URL richiesto.
+  ///
+  /// Restituisce `null` se host o porta non sono validi, così il chiamante può
+  /// mostrare un segnaposto invece di costruire un URL malformato.
+  Uri? artworkUri(Object itemId) {
+    if (!isConfigured) return null;
+    return Uri(
+      scheme: 'http',
+      host: _host,
+      port: _port,
+      path: '/art',
+      queryParameters: {'item': '$itemId'},
+    );
+  }
+
+  /// Header di autenticazione Basic della Web API di VLC.
+  ///
+  /// Esposti perché anche i widget che scaricano le copertine hanno bisogno di
+  /// autenticarsi: la Web API di VLC richiede le credenziali su ogni richiesta,
+  /// quindi l'alternativa sarebbe non avere copertine.
+  Map<String, String>? authHeaders() => isConfigured ? _getHeaders() : null;
+
   /// Ottiene lo stato corrente di VLC in formato XML e lo parsa in VlcStatus
   Future<VlcStatus?> getStatus() async {
     if (!isConfigured) return null;

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup su Android 11 e precedenti (api <= 30). Vedi data_extraction_rules.xml
+  per il significato: le chiavi dell'Android Keystore non sono esportabili, quindi
+  i file cifrati dallo storage sicuro non sarebbero ripristinabili.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="database" path="." />
+</full-backup-content>

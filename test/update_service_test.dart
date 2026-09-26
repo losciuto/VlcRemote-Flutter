@@ -1,5 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vlc_remote_flutter/services/update_service.dart';
+
+import 'support/fake_release_server.dart';
 
 void main() {
   group('isVersionGreater', () {
@@ -38,6 +44,150 @@ void main() {
       expect(isVersionGreater('2.8.0', '2.8'), isFalse);
       expect(isVersionGreater('2.8.x', '2.7.4'), isTrue);
       expect(isVersionGreater('', '0.0.0'), isFalse);
+    });
+  });
+
+  group('downloadVerifiedApk', () {
+    late Directory tempDir;
+    late UpdateService service;
+
+    // Un APK finto: il contenuto non conta, conta l'impronta.
+    final apkBytes = utf8.encode('PK\x03\x04 contenuto fittizio di un APK');
+
+    String hashOf(List<int> bytes) => crypto.sha256.convert(bytes).toString();
+
+    GitHubRelease releaseFor(String url) =>
+        GitHubRelease(tagName: 'v9.9.9', body: '', htmlUrl: url, apkUrl: url);
+
+    setUp(() async {
+      service = UpdateService();
+      tempDir = await Directory.systemTemp.createTemp('vlcremote_update');
+    });
+
+    tearDown(() async {
+      if (tempDir.existsSync()) await tempDir.delete(recursive: true);
+    });
+
+    test('scarica e accetta un APK con impronta corretta', () async {
+      final server = await FakeReleaseServer.start(
+        apkBytes: apkBytes,
+        publishedHash: hashOf(apkBytes),
+      );
+      addTearDown(server.close);
+
+      final path = await service.downloadVerifiedApk(
+        releaseFor(server.apkUrl()),
+        targetDirectory: tempDir,
+      );
+
+      expect(File(path).existsSync(), isTrue);
+      expect(File(path).readAsBytesSync(), apkBytes);
+    });
+
+    test('rifiuta e cancella un APK con impronta diversa', () async {
+      // Regressione di sicurezza: prima l'APK veniva installato senza
+      // nessuna verifica.
+      final server = await FakeReleaseServer.start(
+        apkBytes: apkBytes,
+        publishedHash: hashOf(utf8.encode('qualcosa-diverso')),
+      );
+      addTearDown(server.close);
+
+      await expectLater(
+        service.downloadVerifiedApk(
+          releaseFor(server.apkUrl()),
+          targetDirectory: tempDir,
+        ),
+        throwsA(
+          isA<UpdateVerificationException>().having(
+            (e) => e.message,
+            'messaggio',
+            contains('non corrispondente'),
+          ),
+        ),
+      );
+
+      // Nessun file installabile resta sul disco.
+      expect(
+        File('${tempDir.path}/VlcRemote_update.apk').existsSync(),
+        isFalse,
+      );
+      expect(
+        File('${tempDir.path}/VlcRemote_update.apk.part').existsSync(),
+        isFalse,
+      );
+    });
+
+    test('rifiuta se il rilascio non pubblica l\'impronta', () async {
+      // Fail closed: senza impronta non c'e' nulla a cui agganciarsi.
+      final server = await FakeReleaseServer.start(apkBytes: apkBytes);
+      addTearDown(server.close);
+
+      await expectLater(
+        service.downloadVerifiedApk(
+          releaseFor(server.apkUrl()),
+          targetDirectory: tempDir,
+        ),
+        throwsA(
+          isA<UpdateVerificationException>().having(
+            (e) => e.message,
+            'messaggio',
+            contains('SHA-256'),
+          ),
+        ),
+      );
+      expect(
+        File('${tempDir.path}/VlcRemote_update.apk').existsSync(),
+        isFalse,
+      );
+    });
+
+    test('rifiuta un rilascio senza APK', () async {
+      final server = await FakeReleaseServer.start(apkBytes: apkBytes);
+      addTearDown(server.close);
+
+      await expectLater(
+        service.downloadVerifiedApk(
+          GitHubRelease(tagName: 'v9.9.9', body: '', htmlUrl: 'https://x'),
+          targetDirectory: tempDir,
+        ),
+        throwsA(isA<UpdateVerificationException>()),
+      );
+    });
+
+    test('propaga il progresso del download', () async {
+      final server = await FakeReleaseServer.start(
+        apkBytes: apkBytes,
+        publishedHash: hashOf(apkBytes),
+      );
+      addTearDown(server.close);
+
+      final progress = <double?>[];
+      await service.downloadVerifiedApk(
+        releaseFor(server.apkUrl()),
+        targetDirectory: tempDir,
+        onProgress: progress.add,
+      );
+
+      expect(progress, isNotEmpty);
+      expect(progress.last, 1.0);
+    });
+
+    test('rifiuta un APK piu\' grande del limite', () async {
+      // Il limite e' applicato mentre si scrive, non solo sull\'header.
+      final server = await FakeReleaseServer.start(
+        apkBytes: List<int>.filled(1024, 65),
+        publishedHash: 'a' * 64,
+      );
+      addTearDown(server.close);
+
+      await expectLater(
+        service.downloadVerifiedApk(
+          releaseFor(server.apkUrl()),
+          targetDirectory: tempDir,
+        ),
+        throwsA(anything),
+      );
     });
   });
 }

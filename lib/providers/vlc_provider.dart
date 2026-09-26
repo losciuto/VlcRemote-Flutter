@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 import '../models/vlc_connection.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
@@ -69,6 +70,21 @@ class VlcProvider with ChangeNotifier {
   bool get isReconnecting => _isReconnecting;
   double get reconnectionProgress => _reconnectionProgress;
   FilterSettings? get lastFilterSettings => _lastFilterSettings;
+
+  /// Vero se la Web API di VLC e' utilizzabile, cioe' se la connessione ha una
+  /// password. Senza password la Web API risponde 401.
+  bool get hasWebApi => _vlcHttpService.isConfigured;
+
+  /// URL e header per scaricare la copertina di una voce di playlist.
+  ///
+  /// Costruirli qui, e non nel widget, evita che ogni schermata ricostruisca
+  /// l'autenticazione Basic a mano e che l'id della voce finisca nell'URL senza
+  /// essere codificato. Restituisce `null` se la Web API non e' configurata.
+  ({String url, Map<String, String>? headers})? artworkFor(Object itemId) {
+    final uri = _vlcHttpService.artworkUri(itemId);
+    if (uri == null) return null;
+    return (url: uri.toString(), headers: _vlcHttpService.authHeaders());
+  }
 
   VlcProvider() {
     _init();
@@ -570,24 +586,8 @@ class VlcProvider with ChangeNotifier {
 
   Future<void> killAllRemoteVlc() async {
     if (!isMyPlaylistConfigured) {
-      // Se non è configurato MyPlaylist, tentiamo almeno il kill locale se siamo su Desktop
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        try {
-          if (Platform.isLinux || Platform.isMacOS) {
-            await Process.run('pkill', ['-f', 'vlc']);
-          } else if (Platform.isWindows) {
-            await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T']);
-          }
-          _myPlaylistMessage = 'Comando kill locale inviato';
-          notifyListeners();
-        } catch (e) {
-          _myPlaylistMessage = 'Errore kill locale: $e';
-          notifyListeners();
-        }
-      } else {
-        _myPlaylistMessage = 'MyPlaylist non configurato';
-        notifyListeners();
-      }
+      _myPlaylistMessage = 'MyPlaylist non configurato';
+      notifyListeners();
       return;
     }
 
@@ -599,18 +599,73 @@ class VlcProvider with ChangeNotifier {
         _currentConnection!.myPlaylistSecretKey!,
       ),
     );
+  }
 
-    // Backup: kill locale se siamo sulla stessa macchina (opzionale ma utile)
-    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      try {
-        if (Platform.isLinux || Platform.isMacOS) {
-          await Process.run('pkill', ['-f', 'vlc']);
-        } else if (Platform.isWindows) {
-          await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T']);
-        }
-      } catch (e) {
-        print('[VlcProvider] Kill locale di VLC non riuscito: $e');
+  /// Uccide i processi VLC **di questa macchina**.
+  ///
+  /// Va eseguito solo se il server MyPlaylist e' su questa stessa macchina: il
+  /// comando precedente usava `pkill -f vlc` incondizionatamente, quindi da un
+  /// portatile si uccideva il proprio VLC mentre si tentava di fermare quello
+  /// di un'altra macchina. Inoltre `pkill -f vlc` e' larghissimo: 'vlc' compare
+  /// anche nei nomi di processi che non sono VLC.
+  ///
+  /// Restituisce un messaggio con l'esito, o `null` se non c'e' niente da fare
+  /// (mobile, o server remoto).
+  Future<String?> killLocalVlcIfSameMachine() async {
+    if (!Platform.isLinux && !Platform.isWindows && !Platform.isMacOS) {
+      return null;
+    }
+
+    final serverIp = _currentConnection?.myPlaylistIp;
+    if (serverIp == null || serverIp.isEmpty) return null;
+
+    if (!await _isLocalAddress(serverIp)) {
+      print(
+        '[VlcProvider] Server MyPlaylist su $serverIp: kill locale saltato, '
+        'il comando kill_vlc del server e\' gia\' stato eseguito.',
+      );
+      return null;
+    }
+
+    try {
+      final ProcessResult result = Platform.isWindows
+          ? await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T'])
+          : await Process.run('pkill', ['-x', 'vlc']);
+
+      if (result.exitCode == 0) {
+        return 'Comando kill locale eseguito';
       }
+      if (result.exitCode == 1) {
+        // pkill/taskkill restituiscono 1 quando nessun processo corrisponde.
+        return 'Nessun processo VLC su questa macchina';
+      }
+      return 'Kill locale fallito (codice ${result.exitCode})';
+    } catch (e) {
+      return 'Errore kill locale: $e';
+    }
+  }
+
+  /// Vero se [address] e' uno degli indirizzi di questa macchina.
+  Future<bool> _isLocalAddress(String address) async {
+    // 127.0.0.1 e ::1 sono sempre locali, senza interrogare il sistema.
+    if (address == '127.0.0.1' || address == 'localhost' || address == '::1') {
+      return true;
+    }
+    try {
+      // network_info_plus espone l'IP Wi-Fi: nessun metodo "tutti gli
+      // indirizzi" nella versione dichiarata, quindi il confronto e' fatto
+      // sull'interfaccia senza fili, che e' quella tipicamente configurata con
+      // l'IP del server.
+      final wifiIp = await NetworkInfo().getWifiIP();
+      if (wifiIp != null && wifiIp == address) return true;
+
+      final wifiIpV6 = await NetworkInfo().getWifiIPv6();
+      return wifiIpV6 != null && wifiIpV6 == address;
+    } catch (e) {
+      // Se non si puo' sapere, si assume remoto: il comportamento prudente e'
+      // non uccidere processi dell'utente per errore.
+      print('[VlcProvider] Indirizzi locali non disponibili: $e');
+      return false;
     }
   }
 

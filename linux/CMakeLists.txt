@@ -54,6 +54,11 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
+# flutter_secure_storage usa libsecret (GNOME Keyring) su Linux.
+# Senza questo pacchetto la build fallisce: installarlo con
+#   sudo apt install libsecret-1-dev
+pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
+
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 

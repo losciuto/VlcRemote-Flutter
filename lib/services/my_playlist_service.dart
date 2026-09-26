@@ -7,6 +7,30 @@ import 'package:cryptography/cryptography.dart';
 class MyPlaylistService {
   final AesGcm algorithm = AesGcm.with256bits();
 
+  /// URL della copertina di un video, esposta dal server su porta + 1.
+  ///
+  /// L'id arriva dal server: viene passato come segmento di percorso a [Uri],
+  /// che lo codifica, invece di essere interpolato in una stringa. Restituisce
+  /// `null` se l'host non è un indirizzo valido, così il chiamante può
+  /// mostrare un segnaposto.
+  static Uri? posterUri({
+    required String host,
+    required int port,
+    required Object videoId,
+  }) {
+    if (host.isEmpty) return null;
+    try {
+      return Uri(
+        scheme: 'http',
+        host: host,
+        port: port,
+        pathSegments: ['poster', '$videoId'],
+      );
+    } on ArgumentError {
+      return null;
+    }
+  }
+
   /// Invia un comando cifrato al server MyPlaylist e restituisce la risposta JSON
   Future<Map<String, dynamic>> sendCommand({
     required String host,

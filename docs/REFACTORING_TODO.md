@@ -41,22 +41,28 @@ Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che t
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
 | 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | da fare |
-| 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `vlc_connection.dart:58-59`, `connection_service.dart:29-32` | Bloccante | ok | da fare |
-| 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle:37` | Bloccante | ok | da fare |
-| 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `update_dialog.dart:50-74`, `update_service.dart:28` | Bloccante | ok | da fare |
-| 1.4 | Smettere di inviare la password VLC a ogni richiesta: usarla solo dove serve davvero (elimina la copia nel widget) | `playlist_panel.dart:136,146-149` | Alto | ok | da fare |
-| 1.5 | Limitare dimensione e timeout del download APK, chiudere l'`http.Client` | `update_dialog.dart:51-67` | Medio | ok | da fare |
-| 1.6 | **NOTA**: TLS non è applicabile — l'interfaccia HTTP di VLC non supporta HTTPS. Le alternative realistiche sono (a) storage sicuro, (b) ridurre l'esposizione, (c) tunnel/proxy locale, (d) binding su loopback | `vlc_http_service.dart:27,32` | — | ok | **decisione** |
-| 1.7 | Derivare la chiave AES con un KDF (PBKDF2/scrypt) invece di zero-padding | `my_playlist_service.dart:21-25` | Alto | **⚠️ rompe C4** | **decisione** |
-| 1.8 | Smettere di eseguire `pkill -f vlc` in locale quando il server è remoto | `vlc_provider.dart:514,543` | Alto | ok | **decisione** |
-| 1.9 | Validare/incapsulare gli URL costruiti con dati del server (`Uri.encodeComponent`, allowlist di host) | `my_playlist_panel.dart:613,619-621`, `playlist_panel.dart:146` | Alto | ok | da fare |
+| 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `lib/services/secure_storage_service.dart`, `connection_service.dart` | Bloccante | ok | **fatto** |
+| 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle.kts` | Bloccante | ok | **fatto** |
+| 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `lib/services/update_service.dart` | Bloccante | ok | **fatto** |
+| 1.4 | Smettere di inviare la password VLC a ogni richiesta: usarla solo dove serve davvero (elimina la copia nel widget) | `lib/providers/vlc_provider.dart` (`artworkFor`) | Alto | ok | **fatto** |
+| 1.5 | Limitare dimensione e timeout del download APK, chiudere l'`http.Client` | `lib/services/update_service.dart` | Medio | ok | **fatto** |
+| 1.6 | **NOTA**: TLS non è applicabile — l'interfaccia HTTP di VLC non supporta HTTPS. Le alternative realistiche sono (a) storage sicuro, (b) ridurre l'esposizione, (c) tunnel/proxy locale, (d) binding su loopback | `vlc_http_service.dart` | — | ok | **fatto (a)** |
+| 1.7 | Derivare la chiave AES con un KDF (PBKDF2/scrypt) invece di zero-padding | `lib/services/my_playlist_service.dart` | Alto | **⚠️ rompe C4** | **fatto (A)** |
+| 1.8 | Smettere di eseguire `pkill -f vlc` in locale quando il server è remoto | `lib/providers/vlc_provider.dart` | Alto | ok | **fatto** |
+| 1.9 | Validare/incapsulare gli URL costruiti con dati del server (`Uri.encodeComponent`, allowlist di host) | `vlc_http_service.artworkUri`, `my_playlist_service.posterUri` | Alto | ok | **fatto** |
 
-**Da decidere — 1.7 (KDF).** Due strade:
-- **(A) Compatibilità totale**: non si tocca la derivazione. Mitigazione solo lato client (allungare la secret key, avviso all'utente). Rischio accettato.
+**Risolto — 1.7 (KDF), scelta A.** Le alternative che ci sono state:
+- **(A) Compatibilità totale** ✅ scelta: non si tocca la derivazione. Mitigazione solo lato client (allungare la secret key, avviso all'utente). Rischio accettato.
 - **(B) Sicurezza vera**: si introduce un KDF **identico su entrambi i lati**. Serve rilasciare MyPlaylist per primo, poi VlcRemote. I client VlcRemote vecchi non potranno più parlare con i server nuovi → serve o un flag di versione, o accettare la rottura e aggiornare insieme.
 - **(C) Ibrido**: accettare *entrambe* le derivazioni in MyPlaylist (prova la nuova, se fallisce ricadi sulla vecchia). Compatibile coi client vecchi, costo minimo lato server, nessun negotiation esplicito possibile per C13.
 
-**Da decidere — 1.8 (pkill locale).** Il telecomando uccide qualunque processo con "vlc" nel nome. Opzioni: rimuoverlo del tutto, chiederlo solo se l'IP coincide con `NetworkInfo`, o renderlo esplicito con una spia nella UI.
+La scelta A e' quella economica: non richiede di toccare il server, quindi non rompe
+C4 e non blocca la release. Il prezzo e' che il secret key non viene stirato:
+vedi la sezione "Secret key MyPlaylist: lunghezza" in `AGENTS.md`.
+
+**Risolto — 1.8 (pkill locale).** Il telecomando uccideva qualunque processo con "vlc" nel nome, e lo faceva anche puntando a un server remoto. Ora `killLocalVlcIfSameMachine()` verifica che l'IP di `myPlaylistIp` sia un indirizzo di questa macchina prima di eseguire il kill, e usa `pkill -x vlc` (nome esatto) invece di `pkill -f vlc` (corrispondenza sulla riga di comando, che agganciava anche processi non-VLC). Il comando `kill_vlc` del server resta l'unico modo per fermare VLC remoto.
+
+**Nota su 1.9.** La codifica dei dati del server negli URL e' coperta da `Uri` con `pathSegments`/`queryParameters`, che percent-encodano i segmenti, e da un controllo sull'host. Restano fuori scope gli URL del download aggiornamenti (`update_service.dart`), che arrivano dall'API GitHub: sono protetti dal confronto SHA-256, e l'unica alternativa sarebbe un allowlist di host che romperebbe i mirror.
 
 ### Fase 1 — Correttezza (nessun impatto sul server, alto payoff)
 
@@ -144,9 +150,9 @@ Compila questa sezione man mano che ne parliamo, così non le perdiamo.
 
 | # | Domanda | Scelte | Risposta | Data |
 |---|---|---|---|---|
-| D1 | **1.7 — KDF della chiave AES.** Il server fa la stessa derivazione zero-padded. Che strada? | A = compatibilità totale / B = KDF su entrambi i lati / C = ibrido con fallback | | |
-| D2 | **1.8 — `pkill` locale.** Va rimosso, reso condizionale o reso visibile con spia? | | | |
-| D3 | **1.6 — Rischio rete LAN.** TLS impossibile con VLC. Quale mitigazione scegli? | a) storage sicuro / b) ridurre esposizione / c) tunnel locale / d) loopback | | |
+| D1 | **1.7 — KDF della chiave AES.** Il server fa la stessa derivazione zero-padded. Che strada? | A = compatibilità totale / B = KDF su entrambi i lati / C = ibrido con fallback | **A — nessun KDF**: la derivazione zero-padding resta identica per non rompere C4. Mitigazione lato client: secret key piu' lunga + guida all'utente in AGENTS.md | 2026-09-26 |
+| D2 | **1.8 — `pkill` locale.** Va rimosso, reso condizionale o reso visibile con spia? | rimosso / condizionale / spia | **condizionale**: `killLocalVlcIfSameMachine()` esegue il kill solo se l'IP del server coincide con un indirizzo di questa macchina, e usa `pkill -x vlc` invece di `-f vlc`. Se l'IP non e' noto si assume remoto | 2026-09-26 |
+| D3 | **1.6 — Rischio rete LAN.** TLS impossibile con VLC. Quale mitigazione scegli? | a) storage sicuro / b) ridurre esposizione / c) tunnel locale / d) loopback | **a) storage sicuro**: i segreti non viaggiano in chiaro su disco (realizzato in 1.1). b/c/d restano al livello di configurazione del server, fuori dal client | 2026-09-26 |
 | D4 | **5.6 — Piattaforme.** Il web è dichiarato in `pubspec` ma rotto da `dart:io`. Lo sistemiamo o lo dichiariamo non supportato? | sistemare / dichiarare | | |
 | D5 | **5.8 — Timeout risposta MyPlaylist.** Il server scrive e chiude, il client aspetta `onDone`. Chi deve cambiare? | server / client / nessuno | | |
 | D6 | **Ordine di esecuzione.** Fase 1+2 insieme (correzioni + test) oppure Fase 0 prima? | | | |

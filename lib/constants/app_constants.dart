@@ -57,6 +57,16 @@ class AppConstants {
   static const int commandTimeoutMs = 1500;
   static const int myPlaylistTimeoutMs = 5000;
 
+  // Aggiornamento
+  // Suffix dell'asset che contiene l'impronta SHA-256 dell'APK. La sua
+  // assenza blocca l'installazione: un APK non verificato non viene mai
+  // eseguito, perche' sul canale degli aggiornamenti non c'e' una firma
+  // attendibile a cui agganciarsi.
+  static const String apkChecksumSuffix = '.sha256';
+  static const int updateDownloadTimeoutMs = 120000;
+  static const int updateChecksumTimeoutMs = 10000;
+  static const int maxApkSizeBytes = 200 * 1024 * 1024;
+
   // Retry & Resilience
   static const int maxRetries = 3;
   static const int retryDelayMs = 1000;

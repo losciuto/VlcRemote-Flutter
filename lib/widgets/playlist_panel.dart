@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -124,30 +123,24 @@ class PlaylistPanel extends StatelessWidget {
     VlcProvider provider,
   ) {
     final isPlaying = item.isPlaying;
-    final conn = provider.currentConnection;
+
+    final String? extractedPosterUrl = isPlaying
+        ? provider.status.posterUrl
+        : null;
+    final bool hasExternalPoster =
+        extractedPosterUrl != null && extractedPosterUrl.startsWith('http');
+
+    // URL e autenticazione li costruisce il servizio: il widget non ricostruisce
+    // la Basic Auth a mano, e l'id della voce viene codificato.
+    final artwork = hasExternalPoster ? null : provider.artworkFor(item.id);
+    final artUrl = hasExternalPoster ? extractedPosterUrl : artwork?.url;
+    final Map<String, String>? artHeaders = hasExternalPoster
+        ? null
+        : artwork?.headers;
 
     Widget leadingWidget;
 
-    if (conn != null &&
-        conn.vlcPassword != null &&
-        conn.vlcPassword!.isNotEmpty) {
-      final host = conn.ipAddress;
-      final port = conn.port; // VlcRemote uses same port currently
-      final authStr = base64Encode(utf8.encode(':${conn.vlcPassword}'));
-
-      final String? extractedPosterUrl = isPlaying
-          ? provider.status.posterUrl
-          : null;
-      final bool hasExternalPoster =
-          extractedPosterUrl != null && extractedPosterUrl.startsWith('http');
-
-      final artUrl = hasExternalPoster
-          ? extractedPosterUrl
-          : 'http://$host:$port/art?item=${item.id}';
-      final Map<String, String>? artHeaders = hasExternalPoster
-          ? null
-          : {'Authorization': 'Basic $authStr'};
-
+    if (artUrl != null) {
       leadingWidget = ClipRRect(
         borderRadius: BorderRadius.circular(4),
         child: CachedNetworkImage(

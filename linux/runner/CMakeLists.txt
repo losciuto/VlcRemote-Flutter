@@ -22,5 +22,8 @@ add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
+# Richiesto da flutter_secure_storage per la chiave di cifratura del GNOME
+# Keyring: senza questo link la build Linux non si chiude.
+target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::LIBSECRET)
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
