@@ -1,0 +1,271 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vlc_remote_flutter/exceptions/vlc_exceptions.dart';
+import 'package:vlc_remote_flutter/services/vlc_service.dart';
+
+import 'support/fake_vlc_server.dart';
+
+void main() {
+  late FakeVlcServer server;
+  late VlcService service;
+
+  /// Risposte standard per una connessione funzionante.
+  List<String> defaultResponder(String command) {
+    switch (command) {
+      case 'get_title':
+        return ['Il Film\n'];
+      case 'status':
+        return [
+          '( state: playing )\n(time: 42)\n(length: 100)\n(audio volume: 128)\n',
+        ];
+      case 'get_time':
+        return ['42\n'];
+      case 'get_length':
+        return ['100\n'];
+      case 'volume':
+        return ['128\n'];
+      default:
+        return [];
+    }
+  }
+
+  Future<void> startServer(FakeVlcResponder responder) async {
+    server = await FakeVlcServer.start(responder);
+    service = VlcService();
+    final connected = await service.connect(server.host, server.port);
+    expect(
+      connected,
+      isTrue,
+      reason: 'la connessione al server finto deve riuscire',
+    );
+  }
+
+  tearDown(() async {
+    service.dispose();
+    await server.close();
+  });
+
+  group('getStatus - isPlaying', () {
+    test('non dichiara in riproduzione un video in pausa', () async {
+      await startServer((command) {
+        if (command == 'status') {
+          return ['( state: paused )\n(time: 42)\n'];
+        }
+        return defaultResponder(command);
+      });
+
+      final status = await service.getStatus();
+
+      // Regressione: la condizione era "state == 'playing' || time > 0",
+      // quindi un video in pausa risultava in riproduzione.
+      expect(status, isNotNull);
+      expect(status!.isPlaying, isFalse);
+      expect(status.currentTime, 42);
+    });
+
+    test('dichiara in riproduzione quando lo stato è playing', () async {
+      await startServer(defaultResponder);
+
+      final status = await service.getStatus();
+
+      expect(status!.isPlaying, isTrue);
+    });
+
+    test('ricade sul tempo quando lo stato non è disponibile', () async {
+      await startServer((command) {
+        if (command == 'status') {
+          // 'status' senza media non riporta lo state: solo il tempo.
+          return ['( time: 42 )\n'];
+        }
+        return defaultResponder(command);
+      });
+
+      final status = await service.getStatus();
+
+      expect(status!.isPlaying, isTrue);
+    });
+
+    test('non è in riproduzione quando è fermo', () async {
+      await startServer((command) {
+        if (command == 'status') return ['( state: stopped )\n'];
+        if (command == 'get_time') return ['0\n'];
+        return defaultResponder(command);
+      });
+
+      final status = await service.getStatus();
+
+      expect(status!.isPlaying, isFalse);
+    });
+  });
+
+  group('sendCommandAndRead', () {
+    test('ricompone una risposta spezzata su più chunk', () async {
+      await startServer((command) {
+        if (command == 'get_title') {
+          // VLC spezza la risposta: il vecchio codice leggeva solo il primo chunk.
+          return ['Un Titolo ', 'Molto ', 'Lungo\n'];
+        }
+        return defaultResponder(command);
+      });
+
+      final title = await service.getTitle();
+
+      expect(title, 'Un Titolo Molto Lungo');
+    });
+
+    test('ignora l\'eco del comando e il prompt', () async {
+      await startServer((command) {
+        if (command == 'get_time') return ['77\n'];
+        return defaultResponder(command);
+      });
+
+      // Il server finto fa eco di ogni comando: se l'eco non fosse filtrato,
+      // la risposta conterrebbe anche 'get_time'.
+      final time = await service.getTime();
+
+      expect(time, 77);
+    });
+
+    test('restituisce null se il comando non riceve risposta', () async {
+      await startServer((command) {
+        // 'get_time' resta senza risposta: deve scadere il timeout.
+        if (command == 'get_time') return [];
+        return defaultResponder(command);
+      });
+
+      final result = await service.sendCommandAndRead(
+        'get_time',
+        timeoutMs: 300,
+      );
+
+      expect(result, isNull);
+    });
+  });
+
+  group('getPlaylist', () {
+    const playlistBody = [
+      '+----[ Start of playlist ]-----+\n',
+      '| 4 - Movie (Director\'s Cut)\n',
+      '| 5 - Film (2025)\n',
+      '+----[ End of playlist ]-----+\n',
+    ];
+
+    test('conserva le parentesi che fanno parte del titolo', () async {
+      await startServer((command) {
+        if (command == 'playlist') return playlistBody;
+        return defaultResponder(command);
+      });
+
+      final items = await service.getPlaylist();
+
+      expect(items.length, 2);
+      // Regressione: la regex precedente cancellava qualsiasi testo tra
+      // parentesi, quindi "Director's Cut" spariva dal titolo.
+      expect(items[0].title, "Movie (Director's Cut)");
+      // L'anno in coda viene invece rimosso, come prima.
+      expect(items[1].title, 'Film');
+    });
+
+    test('non si sovrascrive con il polling dello stato', () async {
+      await startServer((command) {
+        if (command == 'playlist') {
+          return [
+            '+----[ Start of playlist ]-----+\n',
+            for (var i = 0; i < 12; i++) '| ${i + 1} - Traccia numero $i\n',
+            '+----[ End of playlist ]-----+\n',
+          ];
+        }
+        return defaultResponder(command);
+      });
+
+      // Lanciati insieme: prima del mutex la risposta di get_time finiva
+      // dentro il buffer della playlist (o viceversa).
+      final playlistFuture = service.getPlaylist();
+      final timeFuture = service.sendCommandAndRead('get_time');
+      final items = await playlistFuture;
+      final time = await timeFuture;
+
+      expect(items.length, 12);
+      expect(time, '42');
+    });
+  });
+
+  group('scenari di errore', () {
+    test('getStatus senza connessione lancia VlcConnectionException', () async {
+      service = VlcService();
+      server = await FakeVlcServer.start(defaultResponder);
+
+      // Regressione: prima restituiva uno stato vuoto, quindi il provider non
+      // poteva contare il fallimento e non riconnette mai.
+      expect(service.getStatus, throwsA(isA<VlcConnectionException>()));
+    });
+
+    test('getStatus senza risposta lancia VlcTimeoutException', () async {
+      await startServer((command) => []); // il server non risponde a nulla
+
+      expect(service.getStatus, throwsA(isA<VlcTimeoutException>()));
+    });
+
+    test(
+      'getPlaylist senza connessione lancia, non restituisce lista vuota',
+      () async {
+        service = VlcService();
+        server = await FakeVlcServer.start(defaultResponder);
+
+        // Una playlist vuota e una connessione persa restituivano entrambe [].
+        expect(service.getPlaylist, throwsA(isA<VlcConnectionException>()));
+      },
+    );
+
+    test('getPlaylist con playlist vuota restituisce lista vuota', () async {
+      await startServer((command) {
+        if (command == 'playlist') {
+          return [
+            '+----[ Start of playlist ]-----+\n',
+            '+----[ End of playlist ]-----+\n',
+          ];
+        }
+        return defaultResponder(command);
+      });
+
+      expect(await service.getPlaylist(), isEmpty);
+    });
+
+    test('getPlaylist dopo la disconnessione lancia', () async {
+      await startServer(defaultResponder);
+      await service.disconnect();
+
+      expect(service.getPlaylist, throwsA(isA<VlcConnectionException>()));
+    });
+  });
+
+  group('clamp dei valori inviati a VLC', () {
+    setUp(() async {
+      await startServer(defaultResponder);
+    });
+
+    test('limita il volume al massimo di VLC', () async {
+      await service.setVolume(999);
+      expect(await server.waitForCommand('volume 256'), isTrue);
+    });
+
+    test('non invia un volume negativo', () async {
+      await service.setVolume(-50);
+      expect(await server.waitForCommand('volume 0'), isTrue);
+    });
+
+    test('non invia un seek negativo', () async {
+      await service.seek(-10);
+      expect(await server.waitForCommand('seek 0'), isTrue);
+    });
+
+    test('non invia un indice playlist sotto 1', () async {
+      await service.goto(0);
+      expect(await server.waitForCommand('goto 1'), isTrue);
+    });
+
+    test('forza un passo di volume almeno 1', () async {
+      await service.volumeUp(0);
+      expect(await server.waitForCommand('volup 1'), isTrue);
+    });
+  });
+}

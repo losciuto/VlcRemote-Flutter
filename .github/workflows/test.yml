@@ -31,4 +31,16 @@ jobs:
         run: flutter analyze
 
       - name: Run tests
-        run: flutter test
+        run: flutter test --coverage
+
+      - name: Report coverage
+        run: |
+          echo "### Coverage" >> "$GITHUB_STEP_SUMMARY"
+          awk 'BEGIN{hit=0; total=0} /^DA:/{split($0,a,","); total++; if(a[2]>0) hit++} END{printf "Linee coperte: %d/%d (%.1f%%)\n", hit, total, (total?100*hit/total:0)}' lcov.info | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: error

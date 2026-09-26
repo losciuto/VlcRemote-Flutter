@@ -37,6 +37,11 @@ class ConnectionService {
   }
 
   /// Ottiene tutte le connessioni salvate
+  ///
+  /// I record illeggibili vengono scartati uno a uno, con un avviso: prima un
+  /// singolo cast errato faceva fallire l'intera lista e il `catch` restituiva
+  /// un array vuoto, facendo perdere tutte le connessioni all'utente senza
+  /// alcun avviso.
   Future<List<VlcConnection>> getConnections() async {
     try {
       final jsonString = _prefs!.getString(_connectionsKey);
@@ -45,9 +50,17 @@ class ConnectionService {
       }
 
       final jsonList = jsonDecode(jsonString) as List<dynamic>;
-      return jsonList
-          .map((json) => VlcConnection.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final connections = <VlcConnection>[];
+      for (final entry in jsonList) {
+        try {
+          connections.add(
+            VlcConnection.fromJson(entry as Map<String, dynamic>),
+          );
+        } catch (e) {
+          print('Connessione scartata perché illeggibile: $e');
+        }
+      }
+      return connections;
     } catch (e) {
       print('Errore durante il caricamento delle connessioni: $e');
       return [];

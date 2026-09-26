@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import '../constants/app_constants.dart';
+import '../exceptions/vlc_exceptions.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
 
@@ -19,6 +21,10 @@ class VlcService {
   final StringBuffer _incomingBuffer = StringBuffer();
   DateTime? _lastChunkTime;
   final Duration _playlistQuietPeriod = Duration(milliseconds: 500);
+
+  // VLC può spezzare una risposta su più chunk TCP. Consideriamo la risposta
+  // completa solo dopo un breve silenzio, così non leggiamo mezza riga.
+  final Duration _chunkQuietPeriod = Duration(milliseconds: 100);
 
   // Simple mutex to synchronize command execution
   Future<void>? _activeCommand;
@@ -160,6 +166,10 @@ class VlcService {
   }
 
   /// Esegue un'azione in modo mutuo-esclusivo
+  ///
+  /// Nota: le azioni in coda non devono mai fallire. Se il precedente comando
+  /// è stato completato con errore, l'attesa non deve propagarlo: ogni
+  /// implementazione gestisce già i propri errori e restituisce un fallback.
   Future<T> _enqueueCommand<T>(Future<T> Function() action) async {
     final previous = _activeCommand;
     final completer = Completer<void>();
@@ -168,7 +178,9 @@ class VlcService {
     if (previous != null) {
       try {
         await previous;
-      } catch (_) {}
+      } catch (e) {
+        print('[VlcService] Comando in coda terminato con errore: $e');
+      }
     }
 
     try {
@@ -178,8 +190,37 @@ class VlcService {
     }
   }
 
-  /// Invia un comando e attende una risposta
-  /// Invia un comando e attende una risposta in modo sincronizzato, filtrando echi e prompt
+  /// Vero se la riga ricevuta è un eco del comando, il prompt '>' o un vuoto
+  bool _isEchoOrPrompt(String line, String command) {
+    final cmd = command.trim();
+    return line.isEmpty ||
+        line == '>' ||
+        line == cmd ||
+        line == '> $cmd' ||
+        line == 'Unknown command `$cmd\'. Type `help\' for help.';
+  }
+
+  /// Rimuove dalla risposta le righe iniziali che sono solo eco del comando
+  String _stripCommandEcho(String response, String command) {
+    final lines = response.split('\n');
+    final cmd = command.trim();
+    var start = 0;
+    while (start < lines.length) {
+      final line = lines[start].trim();
+      if (line.isEmpty || line == '>' || line == cmd || line == '> $cmd') {
+        start++;
+      } else {
+        break;
+      }
+    }
+    return lines.sublist(start).join('\n').trim();
+  }
+
+  /// Invia un comando e attende la risposta completa
+  ///
+  /// I chunk arrivati vengono accumulati e la risposta viene considerata
+  /// completa solo dopo [_chunkQuietPeriod] di silenzio, così una risposta
+  /// spezzata su più chunk non viene letta a metà.
   Future<String?> sendCommandAndRead(
     String command, {
     int timeoutMs = 1500,
@@ -189,9 +230,12 @@ class VlcService {
         return null;
       }
 
+      StreamSubscription<String>? subscription;
+      Timer? quietTimer;
+
       try {
         final completer = Completer<String?>();
-        StreamSubscription? subscription;
+        final responseBuffer = StringBuffer();
 
         // Puliamo il buffer prima di iniziare per evitare rimasugli
         // (Nota: cautela con la playlist, ma per i meta-comandi è necessario)
@@ -199,21 +243,23 @@ class VlcService {
           _incomingBuffer.clear();
         }
 
-        subscription = responseStream.listen((line) {
-          final trimmed = line.trim();
-          // Ignoriamo l'echo del comando, il prompt '>', o righe vuote
-          if (trimmed == command.trim() ||
-              trimmed == '>' ||
-              trimmed.startsWith('> $command') ||
-              trimmed ==
-                  'Unknown command `$command\'. Type `help\' for help.') {
+        subscription = responseStream.listen((chunk) {
+          final trimmed = chunk.trim();
+          // Ignoriamo l'echo del comando, il prompt '>' o le risposte di errore
+          if (_isEchoOrPrompt(trimmed, command)) {
             return;
           }
 
-          if (!completer.isCompleted) {
-            completer.complete(line);
-            subscription?.cancel();
-          }
+          responseBuffer.write(chunk);
+
+          // Riazzera il silenzio: la risposta è completa solo quando i chunk
+          // smettono di arrivare.
+          quietTimer?.cancel();
+          quietTimer = Timer(_chunkQuietPeriod, () {
+            if (!completer.isCompleted) {
+              completer.complete(responseBuffer.toString());
+            }
+          });
         });
 
         _socket!.write('$command\n');
@@ -222,16 +268,18 @@ class VlcService {
         final result = await completer.future.timeout(
           Duration(milliseconds: timeoutMs),
           onTimeout: () {
-            subscription?.cancel();
             print('[VlcService] Timeout per comando: $command');
             return null;
           },
         );
 
-        return result;
+        return result == null ? null : _stripCommandEcho(result, command);
       } catch (e) {
         print('Errore durante sendCommandAndRead ($command): $e');
         return null;
+      } finally {
+        quietTimer?.cancel();
+        await subscription?.cancel();
       }
     });
   }
@@ -254,22 +302,26 @@ class VlcService {
   Future<bool> next() => sendCommand('next');
 
   /// Aumenta volume
-  Future<bool> volumeUp([int amount = 3]) => sendCommand('volup $amount');
+  Future<bool> volumeUp([int amount = AppConstants.volumeStepSize]) =>
+      sendCommand('volup ${amount < 1 ? 1 : amount}');
 
   /// Diminuisci volume
-  Future<bool> volumeDown([int amount = 3]) => sendCommand('voldown $amount');
+  Future<bool> volumeDown([int amount = AppConstants.volumeStepSize]) =>
+      sendCommand('voldown ${amount < 1 ? 1 : amount}');
 
   /// Imposta volume assoluto (0-256)
-  Future<bool> setVolume(int volume) => sendCommand('volume $volume');
+  Future<bool> setVolume(int volume) =>
+      sendCommand('volume ${volume.clamp(0, AppConstants.vlcVolumeMax)}');
 
   /// Toggle fullscreen
   Future<bool> fullscreen() => sendCommand('fullscreen');
 
   /// Vai a una posizione specifica nella playlist (1-based index)
-  Future<bool> goto(int index) => sendCommand('goto $index');
+  Future<bool> goto(int index) => sendCommand('goto ${index < 1 ? 1 : index}');
 
   /// Vai a una posizione specifica (in secondi)
-  Future<bool> seek(int seconds) => sendCommand('seek $seconds');
+  Future<bool> seek(int seconds) =>
+      sendCommand('seek ${seconds < 0 ? 0 : seconds}');
 
   // ==================== QUERY STATO ====================
 
@@ -293,19 +345,6 @@ class VlcService {
     return _parseFirstInteger(response);
   }
 
-  /// Ottiene il volume corrente (0-256, ma VLC usa tipicamente 0-100)
-  Future<int?> getVolume() async {
-    final response = await sendCommandAndRead('volume');
-    if (response == null) return null;
-    final vol = _parseFirstInteger(response);
-    if (vol != null) {
-      // VLC RC 'volume' command returns the 0-512 (0-200%) or 0-256 (0-100%) value.
-      // 256 is exactly 100% in VLC.
-      return (vol * 100 / 256).round();
-    }
-    return null;
-  }
-
   int? _parseFirstInteger(String content) {
     final match = RegExp(r'(\d+)').firstMatch(content);
     if (match != null) {
@@ -315,57 +354,81 @@ class VlcService {
   }
 
   /// Ottiene lo stato completo di VLC combinando più fonti per massimizzare l'accuratezza
-  Future<VlcStatus> getStatus() async {
-    try {
-      // Nota: getTitle, getTime, etc. usano già sendCommandAndRead che è sincronizzato.
-      // Invocandoli in sequenza qui, garantiamo che ogni risposta sia quella giusta.
+  ///
+  /// **Propaga l'errore** quando VLC non risponde: prima l'eccezione veniva
+  /// stampata e sostituita con uno stato vuoto, quindi il retry e la
+  /// riconnessione automatica del provider non scattavano mai.
+  Future<VlcStatus?> getStatus() async {
+    if (!_isConnected) {
+      throw VlcConnectionException(
+        _currentHost ?? '?',
+        _currentPort ?? 0,
+        'non connesso',
+      );
+    }
 
-      final title = await getTitle();
+    // Nota: getTitle, getTime, etc. usano già sendCommandAndRead che è sincronizzato.
+    // Invocandoli in sequenza qui, garantiamo che ogni risposta sia quella giusta.
 
-      // Fallback robusto per il tempo: proviamo prima 'status', poi 'get_time'
-      int? time;
-      int? length;
-      int? rawVolume;
-      String state = 'stopped';
+    final title = await getTitle();
 
-      final statusResp = await sendCommandAndRead('status');
-      if (statusResp != null) {
-        final itemRegex = RegExp(r'\( ([^:]+): (.*?) \)');
-        for (final match in itemRegex.allMatches(statusResp)) {
-          final key = match.group(1)?.trim();
-          final value = match.group(2)?.trim();
-          if (key == 'time') time = int.tryParse(value ?? '');
-          if (key == 'length') length = int.tryParse(value ?? '');
-          if (key == 'state') state = value ?? 'stopped';
-          if (key == 'audio volume' || key == 'volume') {
-            rawVolume = int.tryParse(value ?? '');
-          }
+    // Fallback robusto per il tempo: proviamo prima 'status', poi 'get_time'
+    int? time;
+    int? length;
+    int? rawVolume;
+    String? parsedState;
+
+    final statusResp = await sendCommandAndRead('status');
+    if (statusResp != null) {
+      final itemRegex = RegExp(r'\( ([^:]+): (.*?) \)');
+      for (final match in itemRegex.allMatches(statusResp)) {
+        final key = match.group(1)?.trim();
+        final value = match.group(2)?.trim();
+        if (key == 'time') time = int.tryParse(value ?? '');
+        if (key == 'length') length = int.tryParse(value ?? '');
+        if (key == 'state') parsedState = value;
+        if (key == 'audio volume' || key == 'volume') {
+          rawVolume = int.tryParse(value ?? '');
         }
       }
-
-      // Se mancano dati critici, usiamo i comandi diretti (più affidabili in alcune build di VLC)
-      if (time == null || time == 0) {
-        time = await getTime();
-      }
-      length ??= await getLength();
-      rawVolume ??= await _getVolumeRaw();
-
-      int? volumePercent;
-      if (rawVolume != null) {
-        volumePercent = (rawVolume * 100.0 / 256.0).round().clamp(0, 100);
-      }
-
-      return VlcStatus(
-        nowPlaying: title ?? 'Nessun video in riproduzione',
-        currentTime: time ?? 0,
-        totalTime: length ?? 0,
-        volume: volumePercent,
-        isPlaying: state == 'playing' || (time != null && time > 0),
-      );
-    } catch (e) {
-      print('[VlcService] Errore critico in getStatus: $e');
-      return VlcStatus();
     }
+
+    // Se mancano dati critici, usiamo i comandi diretti (più affidabili in alcune build di VLC)
+    if (time == null || time == 0) {
+      time = await getTime();
+    }
+    length ??= await getLength();
+    rawVolume ??= await _getVolumeRaw();
+
+    // VLC non ha risposto a nessun comando: il collegamento non è più valido.
+    if (title == null && time == null && length == null && rawVolume == null) {
+      throw VlcTimeoutException(
+        Duration(milliseconds: AppConstants.commandTimeoutMs),
+        'nessuna risposta da VLC',
+      );
+    }
+
+    int? volumePercent;
+    if (rawVolume != null) {
+      volumePercent = (rawVolume * 100.0 / 256.0).round().clamp(0, 100);
+    }
+
+    // 'status' riporta lo stato solo se un media e' caricato. Quando la riga
+    // c'e' e' fonte autorevole: usarla evita di dichiarare 'in riproduzione'
+    // un video in pausa (che ha time > 0). Solo se manca ricadiamo sul tempo.
+    final isPlaying = parsedState != null
+        ? parsedState == 'playing'
+        : (time ?? 0) > 0;
+
+    return VlcStatus(
+      nowPlaying: (title == null || title.isEmpty)
+          ? 'Nessun video in riproduzione'
+          : title,
+      currentTime: time ?? 0,
+      totalTime: length ?? 0,
+      volume: volumePercent,
+      isPlaying: isPlaying,
+    );
   }
 
   /// Helper per ottenere il valore grezzo del volume (0-256+)
@@ -376,12 +439,28 @@ class VlcService {
   }
 
   /// Ottiene la playlist corrente
+  ///
+  /// Va eseguita in mutua esclusione come gli altri comandi: scrive sulla stessa
+  /// socket e usa lo stesso buffer di `sendCommandAndRead`, quindi lanciarla in
+  /// parallelo al polling dello stato faceva sovrascrivere le risposte.
+  ///
+  /// Lancia [VlcConnectionException] se non c'è la socket: una playlist
+  /// realmente vuota e un collegamento perso restituivano entrambe `[]`,
+  /// rendendo impossibile distinguere i due casi.
   Future<List<PlaylistItem>> getPlaylist() async {
+    return _enqueueCommand(() => _getPlaylist());
+  }
+
+  Future<List<PlaylistItem>> _getPlaylist() async {
     try {
       final playlistItems = <PlaylistItem>[];
 
       if (!_isConnected || _socket == null) {
-        return [];
+        throw VlcConnectionException(
+          _currentHost ?? '?',
+          _currentPort ?? 0,
+          'nessuna socket attiva',
+        );
       }
 
       // Clear internal buffer and send command to collect full multi-chunk
@@ -503,8 +582,12 @@ class VlcService {
           }
         }
 
-        // Rimuovi anno/info tra parentesi "(2025)"
-        title = title.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
+        // Rimuovi solo l'anno tra parentesi in fondo al titolo.
+        // Le altre parentesi fanno parte del nome del file
+        // (es. "Movie (Director's Cut)") e vanno conservate.
+        title = title
+            .replaceFirst(RegExp(r'\s*\((?:19|20)\d{2}\)\s*$'), '')
+            .trim();
 
         // Normalizza spazi
         title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -531,6 +614,10 @@ class VlcService {
 
       print('[VlcService] Playlist: ${playlistItems.length} items');
       return playlistItems;
+    } on VlcRemoteException {
+      // Le eccezioni tipizzate servono a distinguere 'collegamento perso' da
+      // 'playlist vuota': le propaghiamo invece di trasformarle in [].
+      rethrow;
     } catch (e) {
       print('[VlcService] Errore getPlaylist: $e');
       return [];

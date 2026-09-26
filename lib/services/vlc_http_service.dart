@@ -23,6 +23,17 @@ class VlcHttpService {
     _password = password;
   }
 
+  /// Rimuove la configurazione corrente.
+  ///
+  /// Va chiamata alla disconnessione e prima di ogni nuova connessione: senza
+  /// questo, `isConfigured` resta vero con host e password precedenti e il
+  /// polling continua a interrogare il vecchio server.
+  void clear() {
+    _host = null;
+    _port = null;
+    _password = null;
+  }
+
   Map<String, String> _getHeaders() {
     final auth = 'Basic ${base64Encode(utf8.encode(':$_password'))}';
     return {'Authorization': auth};
@@ -81,7 +92,12 @@ class VlcHttpService {
               if (node.innerText.isNotEmpty) posterUrl = node.innerText;
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          // I metadati (trama, voto, poster) sono opzionali: un errore qui non
+          // deve far fallire la lettura dello stato, ma non deve nemmeno
+          // sparire silenziosamente.
+          print('[VlcHttpService] Metadati non disponibili: $e');
+        }
 
         return VlcStatus(
           nowPlaying: title,

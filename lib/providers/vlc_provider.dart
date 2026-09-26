@@ -4,13 +4,14 @@ import 'package:flutter/foundation.dart';
 import '../models/vlc_connection.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
+import '../models/filter_settings.dart';
+import '../constants/app_constants.dart';
+import '../exceptions/vlc_exceptions.dart';
 import '../services/vlc_service.dart';
 import '../services/vlc_http_service.dart';
 import '../services/connection_service.dart';
 import '../services/my_playlist_service.dart';
 import '../services/settings_service.dart';
-import '../models/filter_settings.dart';
-import '../constants/app_constants.dart';
 
 /// Provider per gestire lo stato dell'applicazione VLC Remote
 class VlcProvider with ChangeNotifier {
@@ -39,9 +40,12 @@ class VlcProvider with ChangeNotifier {
   int _statusUpdateRetries = 0;
   FilterSettings? _lastFilterSettings;
 
+  bool _disposed = false;
+  bool _isUpdatingStatus = false;
+  bool _isRefreshingPlaylist = false;
+
   // Debouncing
   Timer? _volumeDebounceTimer;
-  Timer? _seekDebounceTimer;
 
   // Final fields
   final List<Map<String, dynamic>> _proposedPlaylist = [];
@@ -91,6 +95,11 @@ class VlcProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Azzeriamo la configurazione HTTP precedente: se la nuova connessione
+      // non ha password (o fallisce) il polling non deve interrogare il vecchio
+      // server con le vecchie credenziali.
+      _vlcHttpService.clear();
+
       final success = await _vlcService.connect(
         connection.ipAddress,
         connection.port,
@@ -110,11 +119,13 @@ class VlcProvider with ChangeNotifier {
           );
         }
 
+        // Carica la playlist PRIMA di avviare il polling: avviandolo prima, il
+        // primo tick partiva mentre la playlist leggeva la stessa socket, e le
+        // due risposte si sovrascrivevano.
+        await refreshPlaylist();
+
         // Avvia l'aggiornamento periodico dello stato
         _startStatusUpdates();
-
-        // Carica la playlist
-        await refreshPlaylist();
 
         _isConnecting = false;
         notifyListeners();
@@ -138,6 +149,7 @@ class VlcProvider with ChangeNotifier {
   Future<void> disconnect() async {
     _stopStatusUpdates();
     await _vlcService.disconnect();
+    _vlcHttpService.clear();
     _currentConnection = null;
     _status = VlcStatus();
     _playlist = [];
@@ -234,11 +246,26 @@ class VlcProvider with ChangeNotifier {
   }
 
   /// Aggiorna lo stato corrente di VLC
+  ///
+  /// Propaga l'errore quando VLC non risponde: è il timer periodico a dover
+  /// contare i tentativi e scattare la riconnessione. Le chiamate provenienti
+  /// da un comando utente usano [_updateStatusQuietly], che non lascia
+  /// propagare l'errore alla UI.
   Future<void> _updateStatus() async {
-    // Evitiamo sovrapposizioni di _updateStatus stesso se il mutex del service è occupato
-    if (_isConnecting) return; // Non aggiornare mentre connettiamo
+    // Non aggiornare mentre connettiamo
+    if (_isConnecting) return;
+
+    // Guard di re-entranza: Timer.periodic non aspetta il giro precedente, quindi
+    // un tick più lento del periodo (fallback HTTP, socket occupata) faceva
+    // accumulare richieste in coda sul mutex del servizio.
+    if (_isUpdatingStatus) return;
+    _isUpdatingStatus = true;
 
     try {
+      // Senza nessun trasporto non c'è errore da segnalare: è semplicemente il
+      // caso in cui non siamo connessi, e a occuparsene è il timer.
+      if (!_vlcService.isConnected && !_vlcHttpService.isConfigured) return;
+
       VlcStatus? newStatus;
 
       // Prova prima tramite HTTP se configurato
@@ -249,8 +276,13 @@ class VlcProvider with ChangeNotifier {
       // Fallback su Socket se HTTP fallisce o non è configurato
       newStatus ??= await _vlcService.getStatus();
 
-      // Se non siamo connessi o il risultato è vuoto (fallback), ignora
-      if (!_vlcService.isConnected && !_vlcHttpService.isConfigured) return;
+      if (newStatus == null) {
+        throw VlcConnectionException(
+          _currentConnection?.ipAddress ?? '?',
+          _currentConnection?.port ?? 0,
+          'nessuno stato ricevuto',
+        );
+      }
 
       // LOGICA DI EREDITÀ DELLO STATO (State Guarding)
       // Preveniamo che errori temporanei di comunicazione o parsing resettino la UI
@@ -280,6 +312,21 @@ class VlcProvider with ChangeNotifier {
       );
 
       notifyListeners();
+    } finally {
+      _isUpdatingStatus = false;
+    }
+  }
+
+  /// Come [_updateStatus], ma non lascia propagare l'errore.
+  ///
+  /// Usata dalle azioni dell'utente (play, seek, volume): un errore di rete non
+  /// deve arrivare alla UI come eccezione non gestita, ma va comunque contato ai
+  /// fini del retry dal timer.
+  Future<void> _updateStatusQuietly() async {
+    try {
+      await _updateStatus();
+    } on VlcRemoteException catch (e) {
+      print('[VlcProvider] Stato non aggiornato: $e');
     } catch (e) {
       print('[VlcProvider] Errore durante l\'aggiornamento dello stato: $e');
     }
@@ -287,11 +334,16 @@ class VlcProvider with ChangeNotifier {
 
   /// Aggiorna manualmente lo stato
   Future<void> refreshStatus() async {
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   /// Aggiorna la playlist
   Future<void> refreshPlaylist() async {
+    // Guard di re-entranza: senza questo, un comando MyPlaylist che riconnette
+    // e un tick del timer possono sovrapporsi sulla stessa socket.
+    if (_isRefreshingPlaylist) return;
+    _isRefreshingPlaylist = true;
+
     try {
       print('[VlcProvider] Aggiornamento playlist in corso...');
       List<PlaylistItem> newPlaylist = [];
@@ -311,8 +363,14 @@ class VlcProvider with ChangeNotifier {
         '[VlcProvider] Playlist aggiornata: ${newPlaylist.length} elementi',
       );
       notifyListeners();
+    } on VlcRemoteException catch (e) {
+      // Collegamento perso: lasciamo la playlist precedente invece di
+      // svuotarla, così la UI non perde la traccia corrente.
+      print('[VlcProvider] Playlist non aggiornata: $e');
     } catch (e) {
       print('Errore durante l\'aggiornamento della playlist: $e');
+    } finally {
+      _isRefreshingPlaylist = false;
     }
   }
 
@@ -323,7 +381,7 @@ class VlcProvider with ChangeNotifier {
     await Future.delayed(
       Duration(milliseconds: AppConstants.commandDelayShortMs),
     );
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> pause() async {
@@ -331,7 +389,7 @@ class VlcProvider with ChangeNotifier {
     await Future.delayed(
       Duration(milliseconds: AppConstants.commandDelayShortMs),
     );
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> stop() async {
@@ -339,7 +397,7 @@ class VlcProvider with ChangeNotifier {
     await Future.delayed(
       Duration(milliseconds: AppConstants.commandDelayShortMs),
     );
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> previous() async {
@@ -347,25 +405,25 @@ class VlcProvider with ChangeNotifier {
     await Future.delayed(
       Duration(milliseconds: AppConstants.commandDelayLongMs),
     );
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> next() async {
     await _vlcService.next();
     await Future.delayed(Duration(milliseconds: 500));
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> volumeUp() async {
     await _vlcService.volumeUp(3);
     await Future.delayed(Duration(milliseconds: 200));
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> volumeDown() async {
     await _vlcService.volumeDown(3);
     await Future.delayed(Duration(milliseconds: 200));
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> setVolume(double volume) async {
@@ -392,7 +450,7 @@ class VlcProvider with ChangeNotifier {
   Future<void> seek(int seconds) async {
     await _vlcService.seek(seconds);
     await Future.delayed(Duration(milliseconds: 200));
-    await _updateStatus();
+    await _updateStatusQuietly();
   }
 
   Future<void> seekTo(double seconds) async {
@@ -414,7 +472,7 @@ class VlcProvider with ChangeNotifier {
       print('[VlcProvider] Go to item: ${item.title} (ID: ${item.id})');
       await _vlcService.goto(item.id); // Usa l'ID interno di VLC
       await Future.delayed(Duration(milliseconds: 500));
-      await _updateStatus();
+      await _updateStatusQuietly();
     }
   }
 
@@ -429,7 +487,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.generateRandom(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
         count: count,
         preview: preview,
@@ -442,7 +501,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.generateRecent(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
         count: count,
         preview: preview,
@@ -467,7 +527,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.generateFiltered(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
         genres: genres,
         years: years,
@@ -489,7 +550,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.play(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
       ),
     );
@@ -499,7 +561,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.stop(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
       ),
     );
@@ -531,7 +594,8 @@ class VlcProvider with ChangeNotifier {
     await _runMpCommand(
       () => _myPlaylistService.killVlc(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         _currentConnection!.myPlaylistSecretKey!,
       ),
     );
@@ -544,7 +608,9 @@ class VlcProvider with ChangeNotifier {
         } else if (Platform.isWindows) {
           await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T']);
         }
-      } catch (_) {}
+      } catch (e) {
+        print('[VlcProvider] Kill locale di VLC non riuscito: $e');
+      }
     }
   }
 
@@ -623,7 +689,8 @@ class VlcProvider with ChangeNotifier {
     try {
       final socket = await Socket.connect(
         _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ?? 8080,
+        _currentConnection!.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort,
         timeout: const Duration(seconds: 1),
       );
       socket.destroy();
@@ -670,10 +737,21 @@ class VlcProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _stopStatusUpdates();
     _volumeDebounceTimer?.cancel();
-    _seekDebounceTimer?.cancel();
     _vlcService.dispose();
     super.dispose();
+  }
+
+  /// Notifica gli ascoltatori, ignorando le chiamate successive a [dispose].
+  ///
+  /// Diverse operazioni (riconnessione, barra di progresso MyPlaylist, debounce
+  /// del volume) notificano dopo attese asincrone: senza questa guardia una
+  /// notifica arriverebbe su un provider già smontato.
+  @override
+  void notifyListeners() {
+    if (_disposed) return;
+    super.notifyListeners();
   }
 }

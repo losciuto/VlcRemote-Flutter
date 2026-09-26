@@ -29,18 +29,57 @@ class VlcConnection {
   });
 
   /// Crea una connessione da un Map (per il caricamento da SharedPreferences)
+  ///
+  /// La lettura è tollerante: un campo mancante o di tipo errato viene
+  /// normalizzato invece di far fallire il cast. Serve a evitare che un solo
+  /// record malformato (per esempio scritto da una versione precedente)
+  /// faccia perdere l'intero elenco delle connessioni.
   factory VlcConnection.fromJson(Map<String, dynamic> json) {
+    String asString(Object? value, String fallback) => switch (value) {
+      final String v => v,
+      final num v => v.toString(),
+      _ => fallback,
+    };
+
+    int asInt(Object? value, int fallback) => switch (value) {
+      final int v => v,
+      final double v => v.round(),
+      final String v => int.tryParse(v) ?? fallback,
+      _ => fallback,
+    };
+
+    bool asBool(Object? value, bool fallback) => switch (value) {
+      final bool v => v,
+      final int v => v != 0,
+      final String v => v.toLowerCase() == 'true' ? true : fallback,
+      _ => fallback,
+    };
+
+    DateTime asDateTime(Object? value) => switch (value) {
+      final DateTime v => v,
+      final int v => DateTime.fromMillisecondsSinceEpoch(v),
+      final String v =>
+        DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      _ => DateTime.fromMillisecondsSinceEpoch(0),
+    };
+
     return VlcConnection(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      ipAddress: json['ipAddress'] as String,
-      port: json['port'] as int,
-      lastUsed: DateTime.parse(json['lastUsed'] as String),
-      isFavorite: json['isFavorite'] as bool? ?? false,
-      myPlaylistIp: json['myPlaylistIp'] as String?,
-      myPlaylistPort: json['myPlaylistPort'] as int?,
-      myPlaylistSecretKey: json['myPlaylistSecretKey'] as String?,
-      vlcPassword: json['vlcPassword'] as String?,
+      id: asString(json['id'], ''),
+      name: asString(json['name'], 'Senza nome'),
+      ipAddress: asString(json['ipAddress'], '127.0.0.1'),
+      port: asInt(json['port'], 8080),
+      lastUsed: asDateTime(json['lastUsed']),
+      isFavorite: asBool(json['isFavorite'], false),
+      myPlaylistIp: json['myPlaylistIp'] is String
+          ? json['myPlaylistIp']
+          : null,
+      myPlaylistPort: json['myPlaylistPort'] == null
+          ? null
+          : asInt(json['myPlaylistPort'], 8080),
+      myPlaylistSecretKey: json['myPlaylistSecretKey'] is String
+          ? json['myPlaylistSecretKey']
+          : null,
+      vlcPassword: json['vlcPassword'] is String ? json['vlcPassword'] : null,
     );
   }
 
