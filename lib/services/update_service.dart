@@ -2,6 +2,42 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
+/// Confronta due versioni semantiche.
+///
+/// Accetta un eventuale 'v' iniziale ('v2.8.0'), i metadati di build ('2.7.4+1')
+/// e i prerelease ('2.8.0-rc1'), che non incidono sull'ordine numerico.
+/// Restituisce true solo se [latest] è strettamente maggiore di [current].
+bool isVersionGreater(String latest, String current) {
+  List<int> parse(String version) {
+    return version
+        .trim()
+        .replaceFirst(RegExp(r'^v'), '')
+        .split('+')
+        .first
+        .split('-')
+        .first
+        .split('.')
+        .map((e) => int.tryParse(e) ?? 0)
+        .toList();
+  }
+
+  final latestParts = parse(latest);
+  final currentParts = parse(current);
+
+  final length = latestParts.length > currentParts.length
+      ? latestParts.length
+      : currentParts.length;
+
+  for (var i = 0; i < length; i++) {
+    final latestPart = (latestParts.length > i) ? latestParts[i] : 0;
+    final currentPart = (currentParts.length > i) ? currentParts[i] : 0;
+
+    if (latestPart > currentPart) return true;
+    if (latestPart < currentPart) return false;
+  }
+  return false;
+}
+
 class GitHubRelease {
   final String tagName;
   final String body;
@@ -61,7 +97,7 @@ class UpdateService {
           '',
         );
 
-        if (_isVersionGreater(latestVersion, currentVersion)) {
+        if (isVersionGreater(latestVersion, currentVersion)) {
           return latestRelease;
         }
       }
@@ -69,26 +105,5 @@ class UpdateService {
       print('[UpdateService] Errore durante il controllo aggiornamenti: $e');
     }
     return null;
-  }
-
-  /// Compara due versioni semantiche (es: 2.8.1 e 2.8.0)
-  bool _isVersionGreater(String latest, String current) {
-    final latestParts = latest
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
-    final currentParts = current
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
-
-    for (var i = 0; i < 3; i++) {
-      final latestPart = (latestParts.length > i) ? latestParts[i] : 0;
-      final currentPart = (currentParts.length > i) ? currentParts[i] : 0;
-
-      if (latestPart > currentPart) return true;
-      if (latestPart < currentPart) return false;
-    }
-    return false;
   }
 }

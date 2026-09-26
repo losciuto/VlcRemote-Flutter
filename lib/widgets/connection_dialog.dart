@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_constants.dart';
 import '../models/vlc_connection.dart';
 import '../providers/vlc_provider.dart';
 
@@ -14,12 +15,16 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _ipController = TextEditingController(text: '192.168.1.15');
-  final _portController = TextEditingController(text: '8000');
+  final _portController = TextEditingController(
+    text: '${AppConstants.defaultVlcHttpPort}',
+  );
   final _vlcPasswordController = TextEditingController();
 
   // MyPlaylist controllers
   final _mpIpController = TextEditingController();
-  final _mpPortController = TextEditingController(text: '8080');
+  final _mpPortController = TextEditingController(
+    text: '${AppConstants.defaultMyPlaylistPort}',
+  );
   final _mpSecretKeyController = TextEditingController(
     text: 'my_default_secret_key_32chars_long',
   );
@@ -38,7 +43,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       _portController.text = connection.port.toString();
       _vlcPasswordController.text = connection.vlcPassword ?? '';
       _mpIpController.text = connection.myPlaylistIp ?? '';
-      _mpPortController.text = (connection.myPlaylistPort ?? 8080).toString();
+      _mpPortController.text =
+          (connection.myPlaylistPort ?? AppConstants.defaultMyPlaylistPort)
+              .toString();
       _mpSecretKeyController.text = connection.myPlaylistSecretKey ?? '';
     });
   }
@@ -211,7 +218,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                           controller: _portController,
                           decoration: InputDecoration(
                             labelText: 'Porta VLC',
-                            hintText: '8000',
+                            hintText: '${AppConstants.defaultVlcHttpPort}',
                             prefixIcon: const Icon(Icons.settings_ethernet),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -275,7 +282,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                 controller: _mpPortController,
                                 decoration: InputDecoration(
                                   labelText: 'Porta MP',
-                                  hintText: '8080',
+                                  hintText:
+                                      '${AppConstants.defaultMyPlaylistPort}',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -323,10 +331,12 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                     _editingConnection = null;
                                     _nameController.clear();
                                     _ipController.text = '192.168.1.15';
-                                    _portController.text = '8000';
+                                    _portController.text =
+                                        '${AppConstants.defaultVlcHttpPort}';
                                     _vlcPasswordController.clear();
                                     _mpIpController.clear();
-                                    _mpPortController.text = '8080';
+                                    _mpPortController.text =
+                                        '${AppConstants.defaultMyPlaylistPort}';
                                     _mpSecretKeyController.text =
                                         'my_default_secret_key_32chars_long';
                                   });
@@ -417,7 +427,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                         ),
                         if (connection.myPlaylistIp != null)
                           Text(
-                            'MP: ${connection.myPlaylistIp}:${connection.myPlaylistPort ?? 8080}',
+                            'MP: ${connection.myPlaylistIp}:${connection.myPlaylistPort ?? AppConstants.defaultMyPlaylistPort}',
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.blue,

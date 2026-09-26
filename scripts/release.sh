@@ -22,26 +22,61 @@ echo "[1/6] Cleaning and fetching dependencies..."
 flutter clean
 flutter pub get
 
-# 2. Analyze and test
+# 2. Analyze and test (fail-fast: con `set -e` un fallimento qui ferma la release)
 echo "[2/6] Running analysis and tests..."
-flutter analyze lib/ || echo "Warning: analysis issues found"
-flutter test || echo "Warning: some tests failed"
+dart format --output=none --set-exit-if-changed .
+flutter analyze
+flutter test
 
 # 3. Build for each platform
+# Ogni piattaforma viene compilata solo se il relativo SDK e' presente sulla
+# macchina: prima la piu' piccola piattaforma mancante faceva fallire l'intera
+# release. I salti sono elencati nel riepilogo finale.
+BUILT=""
+
+build_platform() {
+  local label="$1"
+  shift
+  if "$@"; then
+    BUILT="$BUILT $label"
+  else
+    echo ">>> $label: build fallito"
+    return 1
+  fi
+}
+
 echo "[3/6] Building Android (AAB)..."
-flutter build appbundle --release
+build_platform "Android" flutter build appbundle --release || FAILED=1
 
-echo "[4/6] Building iOS..."
-flutter build ios --release --no-pub
+if command -v xcodebuild >/dev/null 2>&1; then
+  echo "[4/6] Building iOS..."
+  build_platform "iOS" flutter build ios --release --no-pub || FAILED=1
+else
+  echo "[4/6] Building iOS... saltato: xcodebuild non disponibile (serve macOS)"
+  SKIPPED="$SKIPPED iOS"
+fi
 
-echo "[5/6] Building Windows..."
-flutter build windows --release
+if command -v cmake >/dev/null 2>&1; then
+  echo "[5/6] Building Windows..."
+  build_platform "Windows" flutter build windows --release || FAILED=1
+else
+  echo "[5/6] Building Windows... saltato: toolchain desktop non disponibile"
+  SKIPPED="$SKIPPED Windows"
+fi
 
 echo "[6/6] Building Linux..."
-flutter build linux --release
+build_platform "Linux" flutter build linux --release || FAILED=1
+
+if [ -n "${SKIPPED:-}" ]; then
+  echo "Saltate:$SKIPPED"
+fi
+if [ "${FAILED:-0}" = "1" ]; then
+  echo "=== Release v$VERSION incompleta: una o piu' piattaforme hanno fallito ==="
+  exit 1
+fi
 
 echo "=== Release v$VERSION complete! ==="
-echo "Artifacts:"
+echo "Artifacts:$BUILT"
 echo "  - build/app/outputs/bundle/release/app-release.aab"
 echo "  - build/ios/iphoneos/Runner.app"
 echo "  - build/windows/runner/Release/vlc_remote_flutter.exe"

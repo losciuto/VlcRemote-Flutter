@@ -32,6 +32,16 @@ class AppConstants {
   static const int statusRefreshMs = 1000; // Ridotto da 500ms per efficienza
   static const int playlistRefreshMs = 5000;
 
+  // Porte di default
+  // Attenzione: la porta del server MyPlaylist e' il default del lato server
+  // (MyPlaylist/lib/services/settings_service.dart). Il server espone le
+  // immagini sull'offset indicato qui: non cambiarlo senza accordo.
+  static const int defaultMyPlaylistPort = 8080;
+  static const int myPlaylistPosterPortOffset = 1;
+
+  // Porta della Web API di VLC (interfaccia http di VLC, non MyPlaylist)
+  static const int defaultVlcHttpPort = 8000;
+
   // Parametri di volume
   static const int volumeStepSize = 3;
   static const int maxVolumePercent = 100;

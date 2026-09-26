@@ -1,0 +1,165 @@
+# Piano di refactoring VlcRemote — TODO
+
+> Stato: da discutere. Generato il 2026-09-26.
+> Progetto: `VlcRemote` (client) · Server: `MyPlaylist` (`lib/services/remote_control_service.dart`)
+> Vincolo: ogni modifica deve restare **compatibile con il server MyPlaylist** (v3.14.1).
+
+## Legenda
+
+**Impatto server** — `ok` = nessun impatto, puoi farlo da solo · `⚠️` = richiede modifica coordinata in MyPlaylist, non farlo finché non è deciso · `⛔` = vietato per ora
+
+**Stato** — `fatto` · `da fare` · `decisione` (serve una tua risposta) · `bloccato` (dipende da una decisione)
+
+---
+
+## 0. Contratto server da NON rompere
+
+Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che tocca I/O deve rispettarle.
+
+| # | Invariante | Riferimento server |
+|---|---|---|
+| C1 | Header 4 byte uint32 **big-endian** con la lunghezza del payload cifrato, obbligatorio | `remote_control_service.dart:216-217` |
+| C2 | Payload = `nonce(12) \|\| mac(16) \|\| ciphertext`, AES-GCM **256 bit** | `remote_control_service.dart:238-240` |
+| C3 | Payload minimo **28 byte**, sotto = `Message too short` | `remote_control_service.dart:234` |
+| C4 | Chiave = secret key UTF-8 **zero-padded o troncata a 32 byte** (identica a `my_playlist_service.dart:21-26`) | `remote_control_service.dart:264-270` |
+| C5 | Comandi ammessi: `generate_random`, `generate_recent`, `generate_filtered`, `play`, `stop`, `kill_vlc` | `remote_control_service.dart:298-358` |
+| C6 | Chiavi `args` di `generate_filtered`: `genres`, `years`, `min_rating`, `actors`, `directors`, `excluded_*`, `limit`, `preview` | `remote_control_service.dart:323-342` |
+| C7 | Risposta = **JSON grezza senza header**, socket chiuso subito dopo; niente chunking | `remote_control_service.dart:247,252` |
+| C8 | Campi risposta: `status` (`success`/`error`), `message`, `command`, `playlist` | `remote_control_service.dart:250, 360-365` |
+| C9 | `playlist[]` = `Video.toMap()`: `id, path, mtime, title, genres, year, directors, directorThumbs, plot, actors, actorThumbs, duration, rating, isSeries, posterPath, saga, sagaIndex, date_added` | `MyPlaylist/lib/models/video.dart:72-92` |
+| C10 | **One-shot**: una nuova connessione TCP per comando, poi chiusura | `my_playlist_service.dart:99` |
+| C11 | Timeout lettura server **5 s**: il client deve inviare tutto entro 5 s dalla connessione | `remote_control_service.dart:211` |
+| C12 | Endpoint poster `GET /poster/<id>` su **porta + 1** (8081 se TCP=8080), **senza autenticazione**, 302 se il poster è URL remoto | `remote_control_service.dart:142-189` |
+| C13 | Nessun campo di versione protocollo nel payload: **la compatibilità è manuale**, via CHANGELOG |
+
+---
+
+## 1. Tabella TODO
+
+### Fase 0 — Sicurezza urgente (bloccanti)
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | da fare |
+| 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `vlc_connection.dart:58-59`, `connection_service.dart:29-32` | Bloccante | ok | da fare |
+| 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle:37` | Bloccante | ok | da fare |
+| 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `update_dialog.dart:50-74`, `update_service.dart:28` | Bloccante | ok | da fare |
+| 1.4 | Smettere di inviare la password VLC a ogni richiesta: usarla solo dove serve davvero (elimina la copia nel widget) | `playlist_panel.dart:136,146-149` | Alto | ok | da fare |
+| 1.5 | Limitare dimensione e timeout del download APK, chiudere l'`http.Client` | `update_dialog.dart:51-67` | Medio | ok | da fare |
+| 1.6 | **NOTA**: TLS non è applicabile — l'interfaccia HTTP di VLC non supporta HTTPS. Le alternative realistiche sono (a) storage sicuro, (b) ridurre l'esposizione, (c) tunnel/proxy locale, (d) binding su loopback | `vlc_http_service.dart:27,32` | — | ok | **decisione** |
+| 1.7 | Derivare la chiave AES con un KDF (PBKDF2/scrypt) invece di zero-padding | `my_playlist_service.dart:21-25` | Alto | **⚠️ rompe C4** | **decisione** |
+| 1.8 | Smettere di eseguire `pkill -f vlc` in locale quando il server è remoto | `vlc_provider.dart:514,543` | Alto | ok | **decisione** |
+| 1.9 | Validare/incapsulare gli URL costruiti con dati del server (`Uri.encodeComponent`, allowlist di host) | `my_playlist_panel.dart:613,619-621`, `playlist_panel.dart:146` | Alto | ok | da fare |
+
+**Da decidere — 1.7 (KDF).** Due strade:
+- **(A) Compatibilità totale**: non si tocca la derivazione. Mitigazione solo lato client (allungare la secret key, avviso all'utente). Rischio accettato.
+- **(B) Sicurezza vera**: si introduce un KDF **identico su entrambi i lati**. Serve rilasciare MyPlaylist per primo, poi VlcRemote. I client VlcRemote vecchi non potranno più parlare con i server nuovi → serve o un flag di versione, o accettare la rottura e aggiornare insieme.
+- **(C) Ibrido**: accettare *entrambe* le derivazioni in MyPlaylist (prova la nuova, se fallisce ricadi sulla vecchia). Compatibile coi client vecchi, costo minimo lato server, nessun negotiation esplicito possibile per C13.
+
+**Da decidere — 1.8 (pkill locale).** Il telecomando uccide qualunque processo con "vlc" nel nome. Opzioni: rimuoverlo del tutto, chiederlo solo se l'IP coincide con `NetworkInfo`, o renderlo esplicito con una spia nella UI.
+
+### Fase 1 — Correttezza (nessun impatto sul server, alto payoff)
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 2.1 | Mettere `getPlaylist` sullo stesso mutex di `sendCommandAndRead` (race sul buffer) | `vlc_service.dart` | Bloccante | ok | **fatto** |
+| 2.2 | Aggiungere `VlcHttpService.clear()` e chiamarlo in `disconnect()` e sui rami senza password | `vlc_http_service.dart`, `vlc_provider.dart` | Bloccante | ok | **fatto** |
+| 2.3 | Correggere `isPlaying` nel fallback socket (`\|\| time > 0` riporta "in riproduzione" in pausa) | `vlc_service.dart` | Bloccante | ok | **fatto** |
+| 2.4 | Gestire `notifyListeners()` dopo `dispose()` in `_runMpCommand` | `vlc_provider.dart` | Alto | ok | **fatto** (guardia in `notifyListeners()`) |
+| 2.5 | Non far fallire tutta la lista connessioni se un record è malformato (parsing tollerante) | `vlc_connection.dart`, `connection_service.dart` | Alto | ok | **fatto** |
+| 2.6 | Non distruggere i titoli con parentesi nel parsing della playlist | `vlc_service.dart` | Alto | ok | **fatto** (si rimuove solo l'anno in coda) |
+| 2.7 | Riassemblare le risposte multi-chunk usando il buffer che già esiste | `vlc_service.dart` | Alto | ok | **fatto** (silenzio di 100 ms) |
+| 2.8 | `try/catch` muti che nascondono errori (parsing metadati, await previous, kill) | `vlc_http_service.dart`, `vlc_service.dart`, `vlc_provider.dart` | Medio | ok | **fatto** |
+| 2.9 | `_isVersionGreater` non gestisce `2.7.4+1` (`int.tryParse("4+1")` → 0) | `update_service.dart` | Medio | ok | **fatto** |
+| 2.10 | Clampare volume e seek nel layer servizi, non solo in `seekTo` | `vlc_service.dart` | Medio | ok | **fatto** |
+| 2.11 | Copertura di test per il layer servizi con un server RC finto | `test/support/fake_vlc_server.dart`, `test/vlc_service_test.dart` | Bloccante | ok | **fatto** (14 test) |
+| 2.12 | Verificare che i nuovi test **falliscano** col codice vecchio (test di regressione veri) | — | — | ok | **fatto**: 2.1, 2.3, 2.4, 2.5, 2.6, 2.7 rivoltati e confermati |
+
+**Test in circolazione** (da 17 a 71): `vlc_service_test.dart` (19), `my_playlist_service_test.dart` (14), `connection_service_test.dart` (10), `vlc_http_service_test.dart` (6), `update_service_test.dart` (6), `vlc_provider_test.dart` (2), più i 12 preesistenti su modelli e widget. Infrastruttura di test: `test/support/fake_vlc_server.dart` e `test/support/fake_my_playlist_server.dart`.
+
+**Copertura**: 26.3% delle righe (556/2117). La parte non coperta è quasi tutta la UI (`home_screen`, `connection_dialog`, `my_playlist_panel`, `playlist_panel`, `control_panel`), che va affrontata in Fase 4 con test di widget.
+
+### Fase 2 — Resilienza e test
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|| 3.1 | Propagare gli errori invece di stamparli: oggi il retry/reconnect è **inerte** | `vlc_provider.dart`, `vlc_service.dart` | Bloccante | ok | **fatto** |
+| 3.2 | Adottare `lib/exceptions/vlc_exceptions.dart` (5 classi, **zero usi**) invece di `print` + `return null` | `vlc_exceptions.dart` | Alto | ok | **parziale**: usate in `VlcService.getStatus`/`getPlaylist` e nel provider. Restano i servizi di persistenza e `UpdateService`, dove `print` + fallback è ancora accettabile |
+| 3.3 | Guard di re-entranza sul `Timer.periodic` + avviare il timer dopo la playlist | `vlc_provider.dart` | Alto | ok | **fatto** (`_isUpdatingStatus`, `_isRefreshingPlaylist`, timer avviato dopo `refreshPlaylist`) |
+| 3.4 | Test del layer servizi: **oggi 0 righe** su `VlcService`, `VlcHttpService`, `VlcProvider`, `ConnectionService`, `UpdateService` | `test/` | Bloccante | ok | **fatto** (71 test; `SettingsService` e `UpdateService` hanno solo test parziali) |
+| 3.5 | Riscrivere `my_playlist_encryption_test.dart`: oggi copia la logica e verifica un pacchetto costruito lì, non il codice di produzione | `test/my_playlist_encryption_test.dart` | Alto | ok | **fatto**: file rimosso, il pacchetto è ora verificato sul codice di produzione in `my_playlist_service_test.dart` |
+| 3.6 | Test di contratto contro il server reale: header BE, min 28 byte, `nonce\|\|mac\|\|ciphertext`, chiave zero-padded | `test/support/fake_my_playlist_server.dart` | Alto | ok | **fatto** (14 test) — **limite**: replica fedele del lato server in un helper di test, non importa il codice reale di MyPlaylist (progetto separato) |
+| 3.7 | Fixare `release.sh`: oggi `flutter test \|\| echo Warning` con `set -e` → una release con test rotti parte lo stesso | `scripts/release.sh:22-23` | Alto | ok | **fatto** |
+| 3.8 | Aggiungere `flutter test` a `check_code.sh` (oggi solo format + analyze) | `scripts/check_code.sh` | Medio | ok | **fatto** |
+| 3.9 | Coverage in CI (`test.yml` oggi non la calcola) | `.github/workflows/test.yml` | Medio | ok | **fatto**: `flutter test --coverage`, riepilogo in `$GITHUB_STEP_SUMMARY`, `lcov.info` come artifact. Baseline attuale **26.3%** (556/2117) |
+| 3.10 | Test di copertura per gli scenari di errore (connessione persa, playlist vuota, aggiornamento fallito) | `test/vlc_service_test.dart`, `test/my_playlist_service_test.dart` | Medio | ok | **fatto** |
+| 3.11 | **Drift di formattazione che faceva fallire la CI**: `test/filter_settings_test.dart` e `test/playlist_item_test.dart` non passavano `dart format --set-exit-if-changed`, quindi il workflow `test.yml` su `main` è rosso dalla commit `4dce47f` | due file di test | Alto | ok | **fatto** (nel working tree, non committato) |
+| 3.12 | Test per `isVersionGreater` (build metadata, prerelease, prefisso `v`) | `test/update_service_test.dart` | Medio | ok | **fatto** (6 test) |
+| 3.13 | `release.sh` compila iOS, Windows e Linux sulla stessa macchina: fallisce sempre su un sistema senza quegli SDK | `scripts/release.sh` | Medio | ok | **fatto**: ogni piattaforma viene saltata con avviso se manca l'SDK, i fallimenti veri escono con codice 1 |
+| 3.14 | Con VLC "connesso ma morto" il primo retry arriva dopo ~22 s (5 comandi × 1,5 s di timeout × 3 tentativi) | `vlc_service.dart`, `app_constants.dart` | Medio | ok | **decisione** (D10): i timeout sono già brevi per impostazione, ridurli cambia il comportamento su reti lente |
+
+### Fase 3 — Performance
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | `home_screen.dart:63,84,96`, `control_panel.dart:24-203`, `my_playlist_panel.dart:64-264` | Alto | ok | da fare |
+| 4.2 | Sospendere il polling in background con `WidgetsBindingObserver` (assente in tutto `lib/`) | assente | Alto | ok | da fare |
+| 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart:40,109,163` | Medio | ok | da fare |
+| 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 5 call site) | `connection_service.dart:40-55` | Medio | ok | da fare |
+| 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart:402-429` | Medio | ok | da fare |
+| 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart:45,114`, `my_playlist_service.dart:95` | Medio | ok | da fare |
+| 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+
+### Fase 4 — Architettura e UI
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 5.1 | Scomporre `my_playlist_panel.dart` (850 righe, 3 dialog enormi inline, 10 `TextEditingController` creati per apertura senza dispose) | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | da fare |
+| 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | da fare |
+| 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
+| 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart:17-21` | Medio | ok | da fare |
+| 5.5 | Spostare `Process.run` fuori dal layer di stato; spostare il download APK fuori dal widget | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | da fare |
+| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **decisione** |
+| 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | da fare |
+| 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **decisione** |
+| 5.9 | Allineare `AppConfig` con la realtà (dichiara porta 4242, la UI usa 8000/8080) | `app_config.dart:13-15,44-45` | Basso | ok | **parziale**: i default delle porte ora vivono in `AppConstants`; `AppConfig.defaultVlcPort = 4242` resta sbagliato e inutilizzato |
+
+### Fase 5 — Igiene, log, documentazione
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 6.1 | Togliere i 42 `print` di produzione che filtrano titoli e percorsi dei tuoi file | `vlc_service.dart:77-79,431-434,527` | Alto | ok | da fare |
+| 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | da fare |
+| 6.3 | Rimuovere codice morto: `getVolume()` (mai chiamato), `_seekDebounceTimer` (mai assegnato), 9 costanti mai usate | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** per `getVolume` e `_seekDebounceTimer`; resta ripulire le costanti |
+| 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
+| 6.5 | Correggere o eliminare `docs/CRITICAL_FIXES.md` (cita righe obsolete, propone fix già applicati) | `docs/CRITICAL_FIXES.md` | Basso | ok | da fare |
+| 6.6 | `intl` è già dipendenza ma non c'è localizzazione: testo hardcoded IT, con qualche leak EN ("Kill all VLC instances") | tutto `lib/` | Basso | ok | da fare |
+| 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali | `control_panel.dart:112-118,189-196` | Basso | ok | da fare |
+| 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |
+
+---
+
+## 2. Decisioni aperte — le tue domande
+
+Compila questa sezione man mano che ne parliamo, così non le perdiamo.
+
+| # | Domanda | Scelte | Risposta | Data |
+|---|---|---|---|---|
+| D1 | **1.7 — KDF della chiave AES.** Il server fa la stessa derivazione zero-padded. Che strada? | A = compatibilità totale / B = KDF su entrambi i lati / C = ibrido con fallback | | |
+| D2 | **1.8 — `pkill` locale.** Va rimosso, reso condizionale o reso visibile con spia? | | | |
+| D3 | **1.6 — Rischio rete LAN.** TLS impossibile con VLC. Quale mitigazione scegli? | a) storage sicuro / b) ridurre esposizione / c) tunnel locale / d) loopback | | |
+| D4 | **5.6 — Piattaforme.** Il web è dichiarato in `pubspec` ma rotto da `dart:io`. Lo sistemiamo o lo dichiariamo non supportato? | sistemare / dichiarare | | |
+| D5 | **5.8 — Timeout risposta MyPlaylist.** Il server scrive e chiude, il client aspetta `onDone`. Chi deve cambiare? | server / client / nessuno | | |
+| D6 | **Ordine di esecuzione.** Fase 1+2 insieme (correzioni + test) oppure Fase 0 prima? | | | |
+| D7 | **Dove tenere questo file.** Ora è in `VlcRemote/docs/REFACTORING_TODO.md`. Va spostato in MyPlaylist (perché è un progetto coordinato) o resta qui? | resta / sposta | | |
+| D8 | **Ambito del git.** Aggiungere questo file al repository, o tenerlo fuori dal tracciamento? | tracciato / gitignored / fuori repo | **tracciato** | 2026-09-26 |
+| D9 | **6.4 — Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` è ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non è ancora stata rilasciata? | bump 2.7.5 / rimandare | | |
+| D10 | **3.14 — Tempo di reazione alFallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettività prima dello stato completo? | ridurre timeout / probe veloce / lasciare così | | |
+
+---
+
+## 3. Regola operativa per ogni intervento
+
+1. Se l'item ha `Impatto server = ok`, si può procedere liberamente.
+2. Se ha `⚠️`, non si tocca il codice finché la decisione corrispondente non è presa **e** il lato MyPlaylist è pronto.
+3. Ogni item che cambia il protocollo va accompagnato da: modifica di `CHANGELOG.md`/`CHANGELOG_IT.md` **su entrambi i repos**, più un test di contratto (3.6) che dimostri la compatibilità.
+4. Nessuna modifica a `remote_control_service.dart` senza un test che copra il comportamento vecchio.

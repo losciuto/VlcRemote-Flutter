@@ -13,20 +13,12 @@ void main() {
     });
 
     test('displayName handles no extension', () {
-      final item = PlaylistItem(
-        id: 2,
-        index: 1,
-        title: '/media/videos/video',
-      );
+      final item = PlaylistItem(id: 2, index: 1, title: '/media/videos/video');
       expect(item.displayName, 'video');
     });
 
     test('displayName handles empty title', () {
-      final item = PlaylistItem(
-        id: 3,
-        index: 2,
-        title: '',
-      );
+      final item = PlaylistItem(id: 3, index: 2, title: '');
       expect(item.displayName, '');
     });
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../constants/app_constants.dart';
 import '../providers/vlc_provider.dart';
 import '../models/filter_settings.dart';
 
@@ -583,7 +584,10 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
     provider.clearPendingPlaylist(); // Clear immediately so it doesn't loop
 
     final ip = provider.currentConnection?.myPlaylistIp ?? '';
-    final port = (provider.currentConnection?.myPlaylistPort ?? 8080) + 1;
+    final port =
+        (provider.currentConnection?.myPlaylistPort ??
+            AppConstants.defaultMyPlaylistPort) +
+        AppConstants.myPlaylistPosterPortOffset;
 
     showDialog(
       context: context,
