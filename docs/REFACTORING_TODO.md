@@ -150,6 +150,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**6.5, il documento propose fix gia' applicati, e l'unico che mancava era a meta'.** `CRITICAL_FIXES.md` elencava quattro bug con il codice "attuale (BUGGY)" e i numeri di riga. Tre erano gia' risolti da tempo, quindi il file insegnava a intervenire su roba a posto. Il quarto, la validazione dell'indirizzo IP, esisteva ma controllava solo che ci fossero quattro parti: `999.999.999.999` e `abc.def.ghi.jkl` passavano, e l'app falliva solo al connettersi, con un errore che parlava di rete.
+
+Completata, e insieme a lei i tre campi di MyPlaylist che non avevano nessun controllo: IP, porta e secret key. Quest'ultimo e' il caso serio: l'etichetta prometteva 32 caratteri e non li controllava, e la chiave viene completata o troncata a 32 byte in silenzio, quindi un refuso produceva una chiave diversa e un errore di decifratura che non spiegava niente. Ora la validazione e' in `Validators`, con test su ogni caso incluso quello che nessuno scriverebbe a mano.
+
+Tolto il file invece di correggerlo: le correzioni sono nel codice, e i numeri di riga di un documento del genere invecchiano prima del primo colpo.
+
 **6.3, la meta' delle costanti "morte" era la risposta giusta a un numero magico.** Le costanti mai usate erano 16, non 9. Nove erano un catalogo di messaggi in italiano che nessuno leggeva e che la localizzazione (6.6) rendera' inutile: cancellate. Le altre sette no: erano gia' la risposta giusta a numeri scritti a mano altrove, e la domanda vera non era "sono inutilizzate" ma "perche' il numero e' ancora li'".
 
 I timeout erano il caso peggiore: `VlcService` aveva `final int _timeout = 2000` e `AppConstants.connectionTimeoutMs` valeva 2000. Due numeri uguali in due posti, con quello giusto ignorato. Idem la conversione del volume, che scriveva `100 / 256` in due servizi diversi. Ora i numeri hanno un nome solo e le conversioni usano gli estremi di `AppConstants`, cosi' se VLC cambiasse scala si cambia in un posto.
@@ -220,7 +226,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | **fatto** |
 | 6.3 | Rimuovere codice morto: 16 costanti mai usate, non 9 | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** |
 | 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
-| 6.5 | Correggere o eliminare `docs/CRITICAL_FIXES.md` (cita righe obsolete, propone fix già applicati) | `docs/CRITICAL_FIXES.md` | Basso | ok | da fare |
+| 6.5 | `docs/CRITICAL_FIXES.md` eliminato: i quattro fix che proponeva sono nel codice, l'unico che mancava era completato adesso | | `docs/CRITICAL_FIXES.md` | Basso | ok | **fatto** |
 | 6.6 | `intl` è già dipendenza ma non c'è localizzazione: testo hardcoded IT, con qualche leak EN ("Kill all VLC instances") | tutto `lib/` | Basso | ok | da fare |
 | 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali | `control_panel.dart:112-118,189-196` | Basso | ok | da fare |
 | 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |

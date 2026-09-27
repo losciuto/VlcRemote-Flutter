@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
 import '../models/vlc_connection.dart';
 import '../providers/vlc_provider.dart';
+import '../utils/validators.dart';
 
 class ConnectionDialog extends StatefulWidget {
   const ConnectionDialog({super.key});
@@ -215,9 +216,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             if (value == null || value.isEmpty) {
                               return 'Inserisci un indirizzo IP';
                             }
-                            // Validazione IP semplice
-                            final parts = value.split('.');
-                            if (parts.length != 4) {
+                            if (!Validators.isValidIpv4(value)) {
                               return 'Indirizzo IP non valido';
                             }
                             return null;
@@ -282,6 +281,18 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             ),
                           ),
                           keyboardType: TextInputType.number,
+                          validator: (value) {
+                            // Il campo e' facoltativo: vuoto vuol dire che
+                            // MyPlaylist non e' su questa macchina. Se pero'
+                            // c'e' qualcosa, deve essere un indirizzo.
+                            if (value == null || value.isEmpty) {
+                              return null;
+                            }
+                            if (!Validators.isValidIpv4(value)) {
+                              return 'Indirizzo IP MyPlaylist non valido';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 16),
 
@@ -300,6 +311,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                   ),
                                 ),
                                 keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return null;
+                                  }
+                                  if (!Validators.isValidPort(value)) {
+                                    return 'Porta non valida (1-65535)';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -326,6 +346,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                   ),
                                 ),
                                 obscureText: !_isPasswordVisible,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return null;
+                                  }
+                                  if (value.length != 32) {
+                                    return 'La chiave deve avere 32 caratteri';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ],
