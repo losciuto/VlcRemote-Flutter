@@ -70,6 +70,17 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     _ipController.dispose();
     _portController.dispose();
     _vlcPasswordController.dispose();
+
+    _mpIpController.dispose();
+    _mpPortController.dispose();
+    _mpSecretKeyController.dispose();
+
+    // Anche i tre campi di MyPlaylist vanno distrutti: trattenerli lasciava
+    // vivo un listener per ogni controller a ogni apertura del dialogo. Il
+    // segreto di MyPlaylist e' il piu' sensibile dei tre, ma il problema non
+    // e' la privacy: e' che le tre righe mancanti rendevano il dispose
+    // incompleto e nessuno se ne accorgeva.
+
     super.dispose();
   }
 

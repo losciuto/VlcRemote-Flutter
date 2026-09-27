@@ -150,6 +150,8 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**5.2, lo stesso difetto di 5.1 anche qui.** Il dialogo di connessione aveva sette campi e ne distruggeva quattro: le tre righe per i campi di MyPlaylist non c'erano, quindi ogni apertura lasciava tre controller vivi, con i loro listener, per tutta la sessione. Il test copre tutti e sette e non solo qualcuno, perche' il difetto era proprio guardare i primi quattro e non gli altri tre.
+
 **5.5, spostare il comando ha reso testabile la parte piu' pericolosa del provider.** `Process.run` stava dentro `killLocalVlcIfSameMachine`, cioe' nel provider. Ora c'e' `LocalProcessService`, che espone solo il codice di uscita: `dart:io` non attraversa la firma e chi chiama non deve saperne qualcosa. Il servizio e' iniettabile, quindi la logica si puo' provare senza un sistema operativo sotto.
 
 I sette test coprono soprattutto il caso in cui non si deve fare niente: server su un'altra macchina, MyPlaylist non configurato, piattaforma senza processi. Uccidere il VLC del portatile mentre si comanda quello del salotto lascerebbe l'utente senza riproduzione, ed e' il motivo per cui quel codice esiste. Tolto il controllo che confronta l'indirizzo con quelli locali, il test lo segnala.
@@ -193,7 +195,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
 | 5.1 | Scomporre `my_playlist_panel.dart`: il dialogo dei filtri e' gia' stato estratto (865 -> 599 righe), restano i dialog di anteprima e di conferma | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **parziale** |
-| 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | da fare |
+| 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | **parziale** (dispose dei campi) |
 | 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
 | 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
