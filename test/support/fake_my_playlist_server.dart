@@ -48,13 +48,25 @@ class FakeMyPlaylistServer {
   /// Errori incontrati leggendo o decifrando un pacchetto.
   final List<String> protocolErrors = [];
 
+  /// Se il server chiude la socket dopo aver risposto.
+  ///
+  /// Il server vero chiude sempre, e i test di protocollo devono continuare a
+  /// farlo. Per provare il caso in cui non chiude, questa opzione lo tiene
+  /// aperto: e' il caso in cui il client non deve dipendere dalla chiusura.
+  bool chiudeDopoRisposta = true;
+
+  /// Le socket rimaste aperte, per non perderle alla chiusura del server.
+  final List<Socket> _connessioni = [];
+
   static Future<FakeMyPlaylistServer> start(
     String secretKey, {
     Map<String, dynamic> Function(String command, Map<String, dynamic> args)?
     responder,
+    bool chiudeDopoRisposta = true,
   }) async {
     final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     final fake = FakeMyPlaylistServer._(server, secretKey, responder);
+    fake.chiudeDopoRisposta = chiudeDopoRisposta;
     server.listen(fake._handleSocket);
     return fake;
   }
@@ -65,6 +77,9 @@ class FakeMyPlaylistServer {
 
   Future<void> close() async {
     for (final socket in _sockets) {
+      socket.destroy();
+    }
+    for (final socket in _connessioni) {
       socket.destroy();
     }
     await _server.close();
@@ -138,7 +153,13 @@ class FakeMyPlaylistServer {
   void _respond(Socket socket, Map<String, dynamic> body) {
     // Il server scrive il JSON e chiude la socket: niente header di lunghezza.
     socket.write(jsonEncode(body));
-    socket.close();
+    if (chiudeDopoRisposta) {
+      socket.close();
+    } else {
+      // Tiene la socket aperta, come se il server non chiudesse. Va tenuta
+      // traccia, altrimenti verrebbe persa alla fine del test.
+      _connessioni.add(socket);
+    }
   }
 
   /// Risposta del server in caso di successo, con la forma prevista dal client.

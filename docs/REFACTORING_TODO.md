@@ -150,6 +150,14 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**5.8, non era un timeout troppo corto: era una risposta che veniva buttata.** Il client attendeva `onDone`, cioe' la chiusura della socket, e la risposta non e' arrivata finche' il server non chiudeva. Il server vero chiude sempre, quindi la cosa sembrava non succedere mai. Con un server che non chiude, pero', un messaggio gia' arrivato e valido veniva scartato e tornava un errore dopo **10 secondi**.
+
+La correzione non e' allungare il timeout, che costerebbe identico: e' smettere di usare la chiusura come segnale di fine messaggio. Quando il buffer finisce con una graffa e il decodifica riesce, la risposta e' completa, e si va avanti. Un JSON troncato non parsesce, quindi non si puo' sbagliare. Stesso tempo di prima, 31 ms invece di 10.028.
+
+Nello stesso posto c'era un `10` scritto a mano per l'attesa, diverso dalla costante che l'item indicava: `myPlaylistTimeoutMs` e' il timeout di connessione, non di risposta. Ora i due hanno due nomi, e si capisce quale dei due e' quale.
+
+Il protocollo non e' cambiato: stessi pacchetti, stesso header a 4 byte, stessa chiave. Il server continua a chiudere, e quel percorso funziona come prima.
+
 **6.7, il test per i bordi ha trovato un altro difetto.** Il corpo della schermata non aveva `SafeArea`: su un telefono con barra dei gesti l'ultimo pannello, quello con i comandi, finiva sotto la barra e i pulsanti restavano premibili a meta'. Ora e' protetto, con `top: false` perche' la `AppBar` copra gia' il bordo superiore.
 
 Scrivendo il test su uno schermo di 360 pixel di larghezza e' emerso che il titolo della `AppBar` non ci stava: 32 pixel di iconetta, 12 di distanza e il titolo a 22 punti finivano sopra il pulsante di connessione. Ora il titolo si accorcia con i puntini.
@@ -221,7 +229,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
 | 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |
 | 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | **fatto** |
-| 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **decisione** |
+| 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre (fatto lato client: la risposta non dipende piu' dalla chiusura) | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **fatto** |
 | 5.9 | Allineare `AppConfig` con la realtà (dichiara porta 4242, la UI usa 8000/8080) | `app_config.dart:13-15,44-45` | Basso | ok | **parziale**: i default delle porte ora vivono in `AppConstants`; `AppConfig.defaultVlcPort = 4242` resta sbagliato e inutilizzato |
 
 ### Fase 5 — Igiene, log, documentazione

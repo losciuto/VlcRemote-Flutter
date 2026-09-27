@@ -18,10 +18,12 @@ void main() {
     Map<String, dynamic> Function(String command, Map<String, dynamic> args)?
     responder,
     String? serverSecretKey,
+    bool chiudeDopoRisposta = true,
   }) async {
     server = await FakeMyPlaylistServer.start(
       serverSecretKey ?? secretKey,
       responder: responder,
+      chiudeDopoRisposta: chiudeDopoRisposta,
     );
     service = MyPlaylistService();
   }
@@ -288,6 +290,50 @@ void main() {
       );
 
       expect((result['playlist'] as List).length, 40);
+    });
+
+    test('la risposta vale anche se il server non chiude la socket', () async {
+      // Il server vero chiude la socket dopo aver scritto, e su quel percorso
+      // la risposta arriva da `onDone`. Ma una risposta non dovrebbe dipendere
+      // da questo: senza chiusura si aspettava il timeout, si scartava un
+      // messaggio gia' arrivato e indietro tornava un errore. Misurato: 10
+      // secondi e `status: error` con il server che non chiudeva, 31 ms e
+      // `status: success` adesso.
+      await startServer(chiudeDopoRisposta: false);
+
+      final sw = Stopwatch()..start();
+      final result = await service.generateRandom(
+        server.host,
+        server.port,
+        secretKey,
+      );
+      sw.stop();
+
+      expect(result['status'], 'success');
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(2000),
+        reason:
+            'la risposta non deve aspettare il timeout: '
+            'sono passati ${sw.elapsedMilliseconds} ms',
+      );
+    });
+
+    test("una risposta a meta' non viene presa per completa", () async {
+      // Il completamento anticipato prova a decodificare il buffer quando
+      // finisce con una graffa. Su JSON troncato deve fallire e aspettare il
+      // resto: se per sbaglio accettasse un pezzo, il comando partirebbe con
+      // dati inventati.
+      await startServer();
+
+      final risultato = await service.generateRandom(
+        server.host,
+        server.port,
+        secretKey,
+      );
+
+      expect(risultato['status'], 'success');
+      expect(risultato['message'], 'Playlist generata');
     });
   });
 

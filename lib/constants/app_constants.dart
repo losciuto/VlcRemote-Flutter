@@ -42,6 +42,14 @@ class AppConstants {
   static const int myPlaylistTimeoutMs = 5000;
   static const int updateCheckTimeoutMs = 5000;
 
+  /// Attesa massima per la risposta a un comando MyPlaylist.
+  ///
+  /// Distincta da [myPlaylistTimeoutMs], che e' il timeout di connessione: la
+  /// risposta arriva dopo che il collegamento e' gia' stato stabilito, e una
+  /// playlist generata puo' essere pesante. Era scritto a mano come 10 secondi
+  /// e senza nome, quindi non risultava da nessuna parte.
+  static const int myPlaylistResponseTimeoutMs = 10000;
+
   // Aggiornamento
   // Suffix dell'asset che contiene l'impronta SHA-256 dell'APK. La sua
   // assenza blocca l'installazione: un APK non verificato non viene mai

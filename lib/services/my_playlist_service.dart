@@ -123,6 +123,36 @@ class MyPlaylistService {
           .listen(
             (data) {
               responseBuffer.write(data);
+
+              // Il server scrive il JSON e poi chiude la socket, e da li'
+              // arriverebbe `onDone`. Non e' pero' l'unico modo in cui la
+              // risposta puo' arrivare: se la socket resta aperta si
+              // aspetterebbe la chiusura fino al timeout, scartando una
+              // risposta gia' ricevuta e tenendo l'utente fermi.
+              //
+              // La chiave e' che un JSON troncato non parsesce, quindi quando
+              // il buffer finisce con una graffa e il decodifica riesce, la
+              // risposta e' completa. Se non prova, si continua ad aspettare.
+              // Il server scrive il JSON e poi chiude la socket, e da li'
+              // arriverebbe `onDone`. Non e' pero' l'unico modo in cui la
+              // risposta puo' arrivare: se la socket resta aperta si
+              // aspetterebbe la chiusura fino al timeout, scartando una
+              // risposta gia' ricevuta e tenendo l'utente fermi.
+              //
+              // La chiave e' che un JSON troncato non parsesce, quindi quando
+              // il buffer finisce con una graffa e il decodifica riesce, la
+              // risposta e' completa. Se non prova, si continua ad aspettare.
+              final testo = responseBuffer.toString().trim();
+              if (testo.endsWith('}') || testo.endsWith(']')) {
+                try {
+                  jsonDecode(testo);
+                  if (!responseCompleter.isCompleted) {
+                    responseCompleter.complete(testo);
+                  }
+                } catch (_) {
+                  // Ancora non completo: si ascolta il chunk successivo.
+                }
+              }
             },
             onError: (e) {
               if (!responseCompleter.isCompleted) {
@@ -138,9 +168,7 @@ class MyPlaylistService {
           );
 
       final rawResult = await responseCompleter.future.timeout(
-        const Duration(
-          seconds: 10,
-        ), // Timeout leggermente più lungo per risposte pesanti
+        const Duration(milliseconds: AppConstants.myPlaylistResponseTimeoutMs),
       );
 
       return jsonDecode(rawResult) as Map<String, dynamic>;
