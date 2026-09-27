@@ -87,7 +87,7 @@ Nota per il rilascio: l'installazione in-app di MyPlaylist resta inactive finche
 | 2.11 | Copertura di test per il layer servizi con un server RC finto | `test/support/fake_vlc_server.dart`, `test/vlc_service_test.dart` | Bloccante | ok | **fatto** (14 test) |
 | 2.12 | Verificare che i nuovi test **falliscano** col codice vecchio (test di regressione veri) | — | — | ok | **fatto**: 2.1, 2.3, 2.4, 2.5, 2.6, 2.7 rivoltati e confermati |
 
-**Test in circolazione** (da 17 a **109** dopo Fase 0, 1.10 e 3.16): `vlc_service_test.dart` (19), `connection_service_test.dart` (18), `my_playlist_service_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `update_dialog_test.dart` (10), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (2), piu' i 16 preesistenti su modelli e widget. Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart` e `fake_release_server.dart` (aggiunto in Fase 0).
+**Test in circolazione** (da 17 a **166**): `connection_service_test.dart` (23), `vlc_service_test.dart` (21), `my_playlist_service_test.dart` (16), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `validators_test.dart` (9), `update_dialog_test.dart` (9), `status_bar_test.dart` (8), `local_process_test.dart` (7), `app_logger_test.dart` (6), `playlist_item_test.dart` (6), `playlist_preview_dialog_test.dart` (6), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (6), `models_test.dart` (5), `filter_settings_test.dart` (4), `smart_filter_dialog_test.dart` (4), `safe_area_test.dart` (3), `connection_dialog_test.dart` (1), piu' `widget_test.dart` (1). Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart`, `fake_release_server.dart`.
 
 Copertura per file, misurata il 27/09/2026 con un `lcov.info` pulito. Serve a distinguere il debito della UI da quello dei servizi: la colonna di sinistra e' il codice di cui mi fido, quella di destra il debito da affrontare.
 
@@ -149,6 +149,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
+
+**5.3, un passo oltre il primo: la barra di stato fuori.** La schermata era di 581 righe, e la barra in alto era un quarto dello scheletro perche' dentro c'erano sia il disegno sia la traduzione dello stato del provider in parole e colori. Ora e' `status_bar.dart`, e la schermata e' a 458.
+
+La parte interessante non era il disegno, e' la regola: MyPlaylist "configurato" non vuol dire "funzionante", quindi un server appena configurato (`NON TESTATO`) si distingue da uno spento (`NON CONNESSO`). Con dentro `home_screen` questa regola non aveva un posto dove stare; con `StatusBar.forProvider` e' una riga e ha un test.
+
+Sul come provarla c'e' un dettaglio che ho imparato a meta' strada: dentro `testWidgets` il tempo e' finto, quindi una connessione socket vera non avanza mai e il test resta appeso fino a scadere, quattro minuti di attesa per un test che non poteva passare. I test sono quindi due gruppi separati: `test` per lo stato, che puo' fare I/O vero, e `testWidgets` per il disegno, che riceve i valori gia' pronti e non ha bisogno di aprire porte.
 
 **5.1, estratti entrambi i dialogi rimasti.** Il pannello era di 865 righe con tre dialogi scritti dentro: filtro, anteprima e conferma. Il filtro e' finito in `smart_filter_dialog.dart` quando ne ho eliminato la fuga di controller, e l'anteprima in `playlist_preview_dialog.dart`. Il pannello e' a 364 righe.
 
@@ -238,7 +244,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 |---|---|---|---|---|---|
 | 5.1 | Scomporre `my_playlist_panel.dart` (865 righe, tre dialog enormi inline) fatto: il pannello e' a 364, dialoghi in file separati | `my_playlist_panel.dart`, `smart_filter_dialog.dart`, `playlist_preview_dialog.dart` | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **fatto** |
 | 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | **parziale** (dispose dei campi) |
-| 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
+| 5.3 | Scomporre `home_screen.dart` (581 righe) fatto al primo passo: la barra di stato e' un widget a se', resta `_buildMainContent` | `home_screen.dart`, `status_bar.dart` | `home_screen.dart:234-356` | Medio | ok | **parziale** |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
 | 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
 | 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |

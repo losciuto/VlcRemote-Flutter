@@ -5,6 +5,7 @@ import '../providers/vlc_provider.dart';
 import '../widgets/connection_dialog.dart';
 import '../widgets/control_panel.dart';
 import '../widgets/now_playing_card.dart';
+import '../widgets/status_bar.dart';
 import '../widgets/playlist_panel.dart';
 import '../widgets/my_playlist_panel.dart';
 import '../widgets/update_dialog.dart';
@@ -101,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
             return Column(
               children: [
                 // Barra di Stato Globale (Avvisi di Collegamento)
-                _buildStatusBar(context, provider),
+                StatusBar.forProvider(provider),
 
                 Expanded(child: _buildMainContent(context, provider)),
               ],
@@ -119,130 +120,6 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Icon(Icons.refresh),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildStatusBar(BuildContext context, VlcProvider provider) {
-    // Definizione stati VLC
-    String vlcStatusText = 'DISCONNESSO';
-    Color vlcColor = Colors.red;
-    if (provider.isConnecting) {
-      vlcStatusText = 'TENTATIVO...';
-      vlcColor = Colors.orange;
-    } else if (provider.isConnected) {
-      vlcStatusText = 'COLLEGATO';
-      vlcColor = Colors.green;
-    }
-
-    // Definizione stati MyPlaylist
-    String mpStatusText = 'NON CONFIG.';
-    Color mpColor = Colors.grey;
-    if (provider.isMyPlaylistBusy) {
-      mpStatusText = 'INVIO...';
-      mpColor = Colors.orange;
-    } else if (provider.isMyPlaylistConfigured) {
-      if (provider.lastMpStatus == 'SUCCESS') {
-        mpStatusText = 'CONNESSO';
-        mpColor = Colors.blue;
-      } else if (provider.lastMpStatus == 'ERROR') {
-        mpStatusText = 'NON CONNESSO';
-        mpColor = Colors.red;
-      } else {
-        mpStatusText = 'NON TESTATO';
-        mpColor = Colors.orange.withValues(alpha: 0.7);
-      }
-    }
-
-    final String vlcIp = provider.currentConnection?.ipAddress ?? '---';
-    final String mpIp = provider.currentConnection?.myPlaylistIp ?? '---';
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildStatusItem(
-                context,
-                'VLC',
-                vlcStatusText,
-                vlcColor,
-                Icons.link,
-                vlcIp,
-              ),
-              const SizedBox(width: 12),
-              _buildStatusItem(
-                context,
-                'MP',
-                mpStatusText,
-                mpColor,
-                Icons.playlist_add_check,
-                mpIp,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusItem(
-    BuildContext context,
-    String label,
-    String status,
-    Color color,
-    IconData icon,
-    String ip,
-  ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-            Text(
-              '$label: ',
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-            ),
-            Flexible(
-              child: Text(
-                status,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: color,
-                  fontWeight: FontWeight.w900,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              ip,
-              style: TextStyle(
-                fontSize: 8,
-                color: Colors.grey[600],
-                fontFamily: 'monospace',
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
