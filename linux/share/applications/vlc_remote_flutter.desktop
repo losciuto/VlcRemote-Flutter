@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=VLC Remote
+Comment=Telecomando remoto per VLC Media Player
+Icon=vlc_remote_flutter
+Exec=vlc_remote_flutter %U
+Terminal=false
+Categories=AudioVideo;Video;Player;
+StartupNotify=true
+StartupWMClass=com.losciuto.vlc_remote_flutter

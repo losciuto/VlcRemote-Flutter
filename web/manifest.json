@@ -1,11 +1,11 @@
 {
-    "name": "vlc_remote_flutter",
-    "short_name": "vlc_remote_flutter",
+    "name": "VLC Remote",
+    "short_name": "VLC Remote",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1E1E2E",
     "theme_color": "#1E1E2E",
-    "description": "A new Flutter project.",
+    "description": "Telecomando remoto per VLC Media Player",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

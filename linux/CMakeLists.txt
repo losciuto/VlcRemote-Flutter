@@ -99,6 +99,19 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# Desktop entry e icone del tema hicolor: senza questi l'applicazione
+# installata non ha una voce nel menu e mostra l'icona generica.
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/share/applications/${BINARY_NAME}.desktop"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/applications"
+  COMPONENT Runtime)
+
+foreach(icon_size 16 24 32 48 64 128 256 512)
+  install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/share/icons/hicolor/${icon_size}x${icon_size}/apps/${BINARY_NAME}.png"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/${icon_size}x${icon_size}/apps"
+    COMPONENT Runtime)
+endforeach(icon_size)
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 
