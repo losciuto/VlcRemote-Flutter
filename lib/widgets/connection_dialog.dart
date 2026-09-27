@@ -43,6 +43,13 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   VlcConnection? _editingConnection;
   List<VlcConnection> _savedConnections = [];
 
+  // Provider e messenger catturati alla prima connessione, mentre il dialogo
+  // e' ancora montato. [_connectTo] li riusa anche dopo la chiusura: il
+  // pulsante "Riprova" dello snack bar richiama [_connectTo] su uno State gia'
+  // dismesso, dove `context` non e' piu' utilizzabile.
+  VlcProvider? _connectProvider;
+  ScaffoldMessengerState? _connectMessenger;
+
   @override
   void initState() {
     super.initState();
@@ -232,7 +239,15 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   Future<void> _connectTo(VlcConnection connection) async {
-    final provider = context.read<VlcProvider>();
+    // "Riprova" richiama questo metodo dopo che il dialogo e' stato chiuso, e
+    // su uno State dismesso qualunque accesso a `context` solleva "This widget
+    // has been unmounted". Per questo i due riferimenti si prendono una volta
+    // sola, alla prima chiamata, quando il contesto e' ancora valido, e da li'
+    // in avanti si riusano.
+    _connectProvider ??= context.read<VlcProvider>();
+    _connectMessenger ??= ScaffoldMessenger.of(context);
+    final provider = _connectProvider!;
+    final messenger = _connectMessenger!;
 
     // Chiude il dialogo subito: la connessione puo' mettere qualche secondo,
     // e tenere aperto il dialogo intanto mostrerebbe una lista che non
@@ -243,9 +258,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
 
     final success = await provider.connect(connection);
 
-    if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Connesso con successo a ${connection.name}'),
           backgroundColor: Colors.green,
@@ -254,7 +268,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             'Impossibile connettersi a ${connection.name} (${connection.ipAddress})',
