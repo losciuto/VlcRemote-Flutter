@@ -112,7 +112,7 @@ class _ControlPanelState extends State<ControlPanel> {
                     _buildControlButton(
                       context,
                       icon: Icons.skip_previous,
-                      label: '',
+                      label: 'Traccia precedente',
                       color: Colors.grey[700]!,
                       onPressed: provider.previous,
                       size: 48,
@@ -120,7 +120,10 @@ class _ControlPanelState extends State<ControlPanel> {
                     _buildControlButton(
                       context,
                       icon: status.isPlaying ? Icons.pause : Icons.play_arrow,
-                      label: '',
+                      // Il nome segue l'icona: annunciare "riproduci" mentre
+                      // l'icona e' quella di pausa fa fare l'operazione
+                      // contraria a quella che si crede di fare.
+                      label: status.isPlaying ? 'Pausa' : 'Riproduci',
                       color: status.isPlaying ? Colors.orange : Colors.green,
                       onPressed: status.isPlaying
                           ? provider.pause
@@ -130,7 +133,7 @@ class _ControlPanelState extends State<ControlPanel> {
                     _buildControlButton(
                       context,
                       icon: Icons.stop,
-                      label: '',
+                      label: 'Ferma la riproduzione',
                       color: Colors.red,
                       onPressed: provider.stop,
                       size: 48,
@@ -138,7 +141,7 @@ class _ControlPanelState extends State<ControlPanel> {
                     _buildControlButton(
                       context,
                       icon: Icons.skip_next,
-                      label: '',
+                      label: 'Traccia successiva',
                       color: Colors.grey[700]!,
                       onPressed: provider.next,
                       size: 48,
@@ -159,6 +162,12 @@ class _ControlPanelState extends State<ControlPanel> {
                         max: 100.0,
                         divisions: 100,
                         label: '${currentVolume.round()}%',
+                        // Le due icone ai lati sono mute da sole: senza
+                        // questo, il cursore si annuncia come "cursore" e la
+                        // percentuale la si legge solo dal fumetto che compare
+                        // trascinando.
+                        semanticFormatterCallback: (value) =>
+                            'Volume ${value.round()}%',
                         onChanged: (value) {
                           setState(() {
                             _isChangingVolume = true;
@@ -217,18 +226,31 @@ class _ControlPanelState extends State<ControlPanel> {
     required VoidCallback onPressed,
     required double size,
   }) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(size / 2),
-      elevation: 4,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(size / 2),
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          child: Icon(icon, color: Colors.white, size: size * 0.5),
+    // I quattro pulsanti di trasporto sono le icone piu' premute dell'app e
+    // sono i soli controlli senza nome: il lettore di schermo non annunciava
+    // niente, e `label` passava la stringa vuota senza che nessuno se ne
+    // accorgesse.
+    return Semantics(
+      button: true,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: Material(
+          color: color,
+          borderRadius: BorderRadius.circular(size / 2),
+          elevation: 4,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(size / 2),
+            child: Container(
+              width: size,
+              height: size,
+              alignment: Alignment.center,
+              child: ExcludeSemantics(
+                child: Icon(icon, color: Colors.white, size: size * 0.5),
+              ),
+            ),
+          ),
         ),
       ),
     );

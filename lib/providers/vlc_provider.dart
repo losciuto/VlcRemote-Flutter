@@ -87,6 +87,20 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   // Getters
   VlcConnection? get currentConnection => _currentConnection;
   VlcStatus get status => _status;
+
+  /// Imposta lo stato senza passare da VLC.
+  ///
+  /// Serve a provare i widget che dipendono dallo stato, che senza questo
+  /// si possono costruire solo nella situazione "non collegato": il pannello
+  /// dei comandi, per esempio, mostra il pulsante di riproduzione solo se
+  /// `isPlaying` e' falso, e senza una via per arrivarci il nome di quel
+  /// pulsante nelle sue due forme non e' verificabile.
+  @visibleForTesting
+  set testStatus(VlcStatus value) {
+    _status = value;
+    notifyListeners();
+  }
+
   List<PlaylistItem> get playlist => _playlist;
   bool get isConnected => _vlcService.isConnected;
   bool get isConnecting => _isConnecting;
