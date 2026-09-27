@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../models/playlist_item.dart';
 import '../providers/vlc_provider.dart';
 
 class PlaylistPanel extends StatelessWidget {
@@ -119,7 +120,7 @@ class PlaylistPanel extends StatelessWidget {
 
   Widget _buildPlaylistItem(
     BuildContext context,
-    dynamic item,
+    PlaylistItem item,
     VlcProvider provider,
   ) {
     final isPlaying = item.isPlaying;

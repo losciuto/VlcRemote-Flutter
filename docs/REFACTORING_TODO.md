@@ -220,7 +220,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
 | 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
 | 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |
-| 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | da fare |
+| 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | **fatto** |
 | 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **decisione** |
 | 5.9 | Allineare `AppConfig` con la realtà (dichiara porta 4242, la UI usa 8000/8080) | `app_config.dart:13-15,44-45` | Basso | ok | **parziale**: i default delle porte ora vivono in `AppConstants`; `AppConfig.defaultVlcPort = 4242` resta sbagliato e inutilizzato |
 
