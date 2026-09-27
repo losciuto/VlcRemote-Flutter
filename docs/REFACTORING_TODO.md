@@ -142,13 +142,21 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | `home_screen.dart:63,84,96`, `control_panel.dart:24-203`, `my_playlist_panel.dart:64-264` | Alto | ok | da fare |
+| 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | **Molto basso** (era Alto) | Alto | **non serve** | da fare |
 | 4.2 | Sospendere il polling in background (`WidgetsBindingObserver` assente in tutto `lib/`) | `vlc_provider.dart` | Alto | ok | **fatto** (3 test) |
 | 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart` | Medio | ok | **fatto** |
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
+
+**4.1 e' stata scartata dopo aver misurato il costo reale.** Con l'albero che ascolta il provider (icona nella AppBar, corpo con il pannello dei comandi, FAB), una ricostruzione completa costa **0,24 ms**. Il polling gira una volta al secondo, quindi si tratta di 0,24 ms al secondo: invisibile.
+
+La correzione proposta, `Selector` al posto dei `Consumer` grossolani, e' stata implementata e misurata a parte: porta 0,24 ms a 0,21 ms. Sono 25 microsecondi per notifica, il 10% di un costo gia' invisibile. Non vale la pena ristrutturare la UI per questo, e i `Consumer` sono piu' facili da leggere.
+
+C'era anche un'altra ragione per aspettarsi un guadagno, e non c'era: la parte pesante, la lista delle voci, e' dentro `_showPreviewDialog`, cioe' in un `showDialog` con `ListView.builder`, e quindi non viene ricostruita dal polling. Il `Consumer` del pannello non la tocca.
+
+Se in futuro il pannello cresce fino a pesare qualche millisecondo, la misura va rifatta: il numero qui vale per l'albero di oggi, non in generale.
 
 **4.7, la barra di progresso non esisteva.** Il valore `reconnectionProgress` era scritto a dieci tappe durante l'attesa per l'avvio di VLC, e non era letto da nessuna parte: non in `lib/`, non nei test. Le dieci `notifyListeners` ricostruivano l'albero duecento volte al secondo per due secondi, e non mostravano nulla. Tolto il campo, il getter e il ciclo; la pausa di due secondi resta, perche' quella e' vera.
 
