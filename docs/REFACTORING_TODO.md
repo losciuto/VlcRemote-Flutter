@@ -1,8 +1,18 @@
 # Piano di refactoring VlcRemote — TODO
 
-> Stato: da discutere. Generato il 2026-09-26.
+> Stato: in esecuzione. Generato il 2026-09-26, aggiornato al 2026-09-27.
 > Progetto: `VlcRemote` (client) · Server: `MyPlaylist` (`lib/services/remote_control_service.dart`)
 > Vincolo: ogni modifica deve restare **compatibile con il server MyPlaylist** (v3.14.1).
+>
+> **Dove siamo.** Le fasi 0, 1, 2, 4 e 5 sono chiuse, salvo i punti elencati sotto.
+> Restano tre voci aperte e tutte e tre aspettano una risposta, non un lavoro:
+> **1.0** (ruotare il token GitHub, serve un umano), **D4** (piattaforme: sistemare
+> il web o dichiararlo non supportato) e **D10** (tempi di reazione al fallback).
+> Il resto del lavoro aperto e' debito di copertura, non difetti: la tabella qui
+> sotto dice dove.
+>
+> **Numeri al 27/09/2026**: 210 test verdi, `flutter analyze` pulito,
+> `dart format` pulito, copertura **61.8%** (1498/2422).
 
 ## Legenda
 
@@ -87,26 +97,40 @@ Nota per il rilascio: l'installazione in-app di MyPlaylist resta inactive finche
 | 2.11 | Copertura di test per il layer servizi con un server RC finto | `test/support/fake_vlc_server.dart`, `test/vlc_service_test.dart` | Bloccante | ok | **fatto** (14 test) |
 | 2.12 | Verificare che i nuovi test **falliscano** col codice vecchio (test di regressione veri) | — | — | ok | **fatto**: 2.1, 2.3, 2.4, 2.5, 2.6, 2.7 rivoltati e confermati |
 
-**Test in circolazione** (da 17 a **166**): `connection_service_test.dart` (23), `vlc_service_test.dart` (21), `my_playlist_service_test.dart` (16), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `validators_test.dart` (9), `update_dialog_test.dart` (9), `status_bar_test.dart` (8), `local_process_test.dart` (7), `app_logger_test.dart` (6), `playlist_item_test.dart` (6), `playlist_preview_dialog_test.dart` (6), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (6), `models_test.dart` (5), `filter_settings_test.dart` (4), `smart_filter_dialog_test.dart` (4), `safe_area_test.dart` (3), `connection_dialog_test.dart` (1), piu' `widget_test.dart` (1). Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart`, `fake_release_server.dart`.
+**Test in circolazione** (da 17 a **210**): `connection_service_test.dart` (23), `vlc_service_test.dart` (21), `my_playlist_service_test.dart` (16), `connections/connection_form_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `validators_test.dart` (9), `update_dialog_test.dart` (9), `status_bar_test.dart` (8), `connections/connection_card_test.dart` (8), `local_process_test.dart` (7), `vlc_provider_test.dart` (6), `vlc_http_service_test.dart` (6), `playlist_preview_dialog_test.dart` (6), `playlist_item_test.dart` (6), `info_dialog_test.dart` (6), `connections/connection_list_test.dart` (6), `app_logger_test.dart` (6), `models_test.dart` (5), `disconnected_view_test.dart` (5), `control_panel_test.dart` (5), `smart_filter_dialog_test.dart` (4), `filter_settings_test.dart` (4), `safe_area_test.dart` (3), `connection_dialog_test.dart` (1), piu' `widget_test.dart` (1). Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart`, `fake_release_server.dart`.
 
 Copertura per file, misurata il 27/09/2026 con un `lcov.info` pulito. Serve a distinguere il debito della UI da quello dei servizi: la colonna di sinistra e' il codice di cui mi fido, quella di destra il debito da affrontare.
 
 | Coperto bene | % | Da colmare | % |
 |---|---|---|---|
-| `filter_settings` | 100.0 | ~~`app_config`~~ | rimosso |
-| `secure_storage_service` | 96.2 | `my_playlist_panel` | 0.3 |
-| `vlc_connection` | 93.7 | `connection_dialog` | 0.4 |
-| `main` | 91.3 | `playlist_panel` | 0.7 |
-| `my_playlist_service` | 86.2 | `control_panel` | 1.0 |
-| `vlc_service` | 83.6 | `now_playing_card` | 4.5 |
-| `vlc_status` | 78.3 | `vlc_provider` | 7.2 |
-| `playlist_item` | 73.9 | `vlc_http_service` | 21.6 |
-| `update_dialog` | 73.1 | `settings_service` | 33.3 |
-| `update_service` | 68.6 | `home_screen` | 47.0 |
-| `connection_service` | 67.8 | | |
+| `filter_settings` | 100.0 | `local_process_service` | 0.0 |
+| `connections/connection_card` | 100.0 | `now_playing_card` | 4.5 |
+| `disconnected_view` | 100.0 | `bottom_sheets` | 5.9 |
+| `status_bar` | 100.0 | `vlc_http_service` | 21.1 |
+| `smart_filter_dialog` | 99.1 | `settings_service` | 66.7 |
+| `connections/connection_form` | 98.7 | | |
+| `info_dialog` | 97.9 | | |
+| `secure_storage_service` | 96.2 | | |
+| `validators` | 92.3 | | |
+| `vlc_connection` | 92.1 | | |
+| `main` | 91.3 | | |
+| `vlc_status` | 91.3 | | |
+| `connections/connection_list` | 88.9 | | |
+| `vlc_service` | 84.0 | | |
+| `app_logger` | 77.8 | | |
+| `connection_service` | 77.2 | | |
+| `playlist_item` | 73.9 | | |
+| `update_dialog` | 73.1 | | |
+| `control_panel` | 69.2 | | |
+| `home_screen` | 69.0 | | |
+| `update_service` | 68.6 | | |
 | `vlc_exceptions` | 64.3 | | |
+| `playlist_preview_dialog` | 49.4 | | |
+| `vlc_provider` | 45.9 | | |
+| `connection_dialog` | 41.6 | | |
 
-`vlc_http_service` al 21.6% e `vlc_provider` al 7.2% sono i due buchi che pesano di piu' fra i servizi: entrambi coprono I/O e stato, e sono lapriorita' della Fase 2. `home_screen` al 47% e' il punto migliore in cui iniziare i test di widget, perche' e' gia' a meta' strada.
+`vlc_http_service` al 21.1% e' il buco che pesa di piu' fra i servizi: copre I/O reale e le sue verifiche, ed e' anche il file che contiene `artworkUri` e `authHeaders`, cioe' il modo in cui l'app costruisce gli URL con i dati del server. Fra i widget, i due pannelli grandi (`my_playlist_panel` 0.7% e `playlist_panel` 0.7%) e `now_playing_card` (4.5%) sono i tre che restano indieti: hanno logica di filtraggio e di costruzione delle voci, quindi sono i prossimi a richiedere test.
+
 
 **Risolto — 1.10 e 3.15.** Il difetto era piu' grave di una segnalazione mancante. Con il comportamento precedente, su una macchina senza keyring la migrazione dei segreti **li cancellava da SharedPreferences senza riuscire a spostarli**: la password dell'utente spariva senza rimedio. Tre correzioni:
 
@@ -121,7 +145,8 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 ### Fase 2 — Resilienza e test
 
 | # | Cosa | File | Sev | Impatto server | Stato |
-|---|---|---|---|---|---|| 3.1 | Propagare gli errori invece di stamparli: oggi il retry/reconnect è **inerte** | `vlc_provider.dart`, `vlc_service.dart` | Bloccante | ok | **fatto** |
+|---|---|---|---|---|---|
+| 3.1 | Propagare gli errori invece di stamparli: oggi il retry/reconnect e' **inerte** | `vlc_provider.dart`, `vlc_service.dart` | Bloccante | ok | **fatto** |
 | 3.2 | Adottare `lib/exceptions/vlc_exceptions.dart` (5 classi, **zero usi**) invece di `print` + `return null` | `vlc_exceptions.dart` | Alto | ok | **parziale**: usate in `VlcService.getStatus`/`getPlaylist` e nel provider. Restano i servizi di persistenza e `UpdateService`, dove `print` + fallback è ancora accettabile |
 | 3.3 | Guard di re-entranza sul `Timer.periodic` + avviare il timer dopo la playlist | `vlc_provider.dart` | Alto | ok | **fatto** (`_isUpdatingStatus`, `_isRefreshingPlaylist`, timer avviato dopo `refreshPlaylist`) |
 | 3.4 | Test del layer servizi: **oggi 0 righe** su `VlcService`, `VlcHttpService`, `VlcProvider`, `ConnectionService`, `UpdateService` | `test/` | Bloccante | ok | **fatto** (71 test; `SettingsService` e `UpdateService` hanno solo test parziali) |
@@ -129,9 +154,9 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 3.6 | Test di contratto contro il server reale: header BE, min 28 byte, `nonce\|\|mac\|\|ciphertext`, chiave zero-padded | `test/support/fake_my_playlist_server.dart` | Alto | ok | **fatto** (14 test) — **limite**: replica fedele del lato server in un helper di test, non importa il codice reale di MyPlaylist (progetto separato) |
 | 3.7 | Fixare `release.sh`: oggi `flutter test \|\| echo Warning` con `set -e` → una release con test rotti parte lo stesso | `scripts/release.sh:22-23` | Alto | ok | **fatto** |
 | 3.8 | Aggiungere `flutter test` a `check_code.sh` (oggi solo format + analyze) | `scripts/check_code.sh` | Medio | ok | **fatto** |
-| 3.9 | Coverage in CI (`test.yml` oggi non la calcola) | `.github/workflows/test.yml` | Medio | ok | **fatto**: `flutter test --coverage`, riepilogo in `$GITHUB_STEP_SUMMARY`, `lcov.info` come artifact. Baseline corrente: **33.9%** (764/2256). Attenzione: `lcov.info` si appende a ogni run, quindi in CI va rimosso prima di misurare |
+| 3.9 | Coverage in CI (`test.yml` oggi non la calcola) | `.github/workflows/test.yml` | Medio | ok | **fatto**: `flutter test --coverage`, riepilogo in `$GITHUB_STEP_SUMMARY`, `lcov.info` come artifact. Baseline al 27/09/2026: **61.8%** (1498/2422), su un `lcov.info` pulito. Era 33.9% (764/2256) quando la misura e' stata presa. Attenzione: `lcov.info` si appende a ogni run, quindi in CI va rimosso prima di misurare |
 | 3.10 | Test di copertura per gli scenari di errore (connessione persa, playlist vuota, aggiornamento fallito) | `test/vlc_service_test.dart`, `test/my_playlist_service_test.dart` | Medio | ok | **fatto** |
-| 3.11 | **Drift di formattazione che faceva fallire la CI**: `test/filter_settings_test.dart` e `test/playlist_item_test.dart` non passavano `dart format --set-exit-if-changed`, quindi il workflow `test.yml` su `main` è rosso dalla commit `4dce47f` | due file di test | Alto | ok | **fatto** (nel working tree, non committato) |
+| 3.11 | **Drift di formattazione che faceva fallire la CI**: `test/filter_settings_test.dart` e `test/playlist_item_test.dart` non passavano `dart format --set-exit-if-changed`, quindi il workflow `test.yml` su `main` e' rosso dalla commit `4dce47f` | due file di test | Alto | ok | **fatto** (committato) |
 | 3.12 | Test per `isVersionGreater` (build metadata, prerelease, prefisso `v`) | `test/update_service_test.dart` | Medio | ok | **fatto** (6 test) |
 | 3.13 | `release.sh` compila iOS, Windows e Linux sulla stessa macchina: fallisce sempre su un sistema senza quegli SDK | `scripts/release.sh` | Medio | ok | **fatto**: ogni piattaforma viene saltata con avviso se manca l'SDK, i fallimenti veri escono con codice 1 |
 | 3.14 | Con VLC "connesso ma morto" il primo retry arriva dopo ~22 s (5 comandi × 1,5 s di timeout × 3 tentativi) | `vlc_service.dart`, `app_constants.dart` | Medio | ok | **decisione** (D10): i timeout sono già brevi per impostazione, ridurli cambia il comportamento su reti lente |
@@ -142,7 +167,7 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | **Molto basso** (era Alto) | Alto | **non serve** | da fare |
+| 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1x/s) | **Molto basso** (era Alto) | Alto | **non serve** | **scartato**: 0,24 ms per ricostruzione, `Selector` ne toglie 0,03 |
 | 4.2 | Sospendere il polling in background (`WidgetsBindingObserver` assente in tutto `lib/`) | `vlc_provider.dart` | Alto | ok | **fatto** (3 test) |
 | 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart` | Medio | ok | **fatto** |
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
@@ -155,6 +180,30 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 La parte interessante non era il disegno, e' la regola: MyPlaylist "configurato" non vuol dire "funzionante", quindi un server appena configurato (`NON TESTATO`) si distingue da uno spento (`NON CONNESSO`). Con dentro `home_screen` questa regola non aveva un posto dove stare; con `StatusBar.forProvider` e' una riga e ha un test.
 
 Sul come provarla c'e' un dettaglio che ho imparato a meta' strada: dentro `testWidgets` il tempo e' finto, quindi una connessione socket vera non avanza mai e il test resta appeso fino a scadere, quattro minuti di attesa per un test che non poteva passare. I test sono quindi due gruppi separati: `test` per lo stato, che puo' fare I/O vero, e `testWidgets` per il disegno, che riceve i valori gia' pronti e non ha bisogno di aprire porte.
+
+**5.2, il dialogo dei server aveva tre schermate dentro e un solo `build`.** Era di 695 righe, e quello che si vedeva dal nome del file era solo l'elenco: la scheda di ciascun server e il modulo per aggiungerne o modificarne uno erano scritti li'. Ora sono `connection_list.dart`, `connections/connection_card.dart` e `connections/connection_form.dart`, e il dialogo tiene solo cio' che gli compete: i sette controller, che devono sopravvivere al passaggio fra elenco e modulo e venir distrutti una volta sola, e le azioni.
+
+Lo spostamento ha reso visibile una cosa che il file unico nascondeva. La validazione era divisa in due: i validatori stavano nel form, il `validate()` nel dialogo, e i due potevano restare indipendenti senza che niente lo segnalasse. Finche' erano nello stesso file si leggevano come un'unica cosa; separati, era chiaro che chi validava non era chi sapeva cosa fosse valido. Ora valida il form, prima di avvisare chi lo apre, e il dialogo non ricontrolla niente.
+
+Consequenza: sono finite anche le due copie private di validazione che il dialogo aveva ancora accanto a quelle di `Validators`. Erano piu' strette, non diverse: ammettevano `010.1.1.1`, che `Validators` rifiuta perche' `010` e `10` sarebbero lo stesso indirizzo scritto due modi. E il blocco che le chiamava era irraggiungibile, perche' il `validate()` del form aveva gia' fermato il salvataggio: due messaggi per lo stesso errore, uno sul campo e uno in basso, di cui quello sul campo era quello che l'utente stava guardando.
+
+Il test esistente ha pagato subito, ed e' la parte che vale la pena raccontare. Nell'elenco vuoto il pulsante per aggiungere un server era sparito: la mia prima versione lo aveva messo nel ramo "quando la lista c'e'", perche' accanto all'elenco sembrava ridondante. Chi apre l'app per la prima volta non ha nessun server salvato, quindi quella era l'unica schermata in cui quel pulsante era indispensabile, e senza non si poteva neanche cominciare. Il test esisteva dal 5.2 precedente, quando aveva scritto i tre `dispose` mancanti, e ha continuato a guardare la stessa cosa: che il dialogo si apra e offra tutte le strade. Ventotto test nuovi.
+
+**5.3, la schermata principale era quattro schermate con il nome di una.** Dopo la barra di stato era di 458 righe, e dentro c'erano cosa si vede quando non si e' collegati, il dialogo delle informazioni, la conferma per fermare VLC e i due fogli con playlist e azioni. Ognuna ha preso il suo file, e la schermata e' a 210 righe: il nome del file corrisponde a quello che fa.
+
+Lo spostamento del dialogo delle informazioni ha fatto emergere un giro che reggeva per caso. Il pulsante che ferma VLC chiudeva il dialogo e poi chiedeva la conferma, riusando il proprio contesto. Funzionava perche' la chiusura non era ancora finuta quando la seconda `showDialog` guardava il `Navigator`; il giorno in cui la chiusura fosse diventata asincrona, l'avviso sarebbe sparito in mezzo a un'azione che interrompe la riproduzione in casa. Ora il dialogo passa la richiesta a chi lo ha aperto, e la conferma parte dal contesto della schermata.
+
+E sempre dai test sono usciti due difetti di layout, entrambi su uno schermo di 360 pixel, cioe' la larghezza minima di un telefono ancora in uso. Il titolo del dialogo delle informazioni era una `Row` con icona e testo e senza `Flexible`: su uno schermo stretto i due si spingevano fuori e ogni apertura lanciava un'eccezione di layout. E il contenuto era piu' alto dello schermo, quindi l'ultima riga, il pulsante che ferma VLC, finiva sotto il bordo. La seconda cosa e' la ragione per cui `AlertDialog` ha l'opzione `scrollable`, che tra l'altro fa piu' di quello che sembra: attaccare uno `SingleChildScrollView` al contenuto, dentro l'`IntrinsicWidth` che il dialogo usa per calcolare la sua larghezza, fa misurare i figli a larghezza illimitata e il pulsante a tutta larghezza trabocca di nuovo di 92 pixel.
+
+**6.7, quattro pulsanti su venti non avevano un nome.** Precedente, play/pausa, stop e successivo erano icone dentro un `InkWell` senza etichetta: il lettore di schermo non annunciava niente e il tooltip non c'era. Il caso scomodo era che il metodo che li costruiva accettava gia' un parametro di nome chiamato `label`, passato la stringa vuota in tutti e quattro i punti: la firma era predisposta per evitare il difetto, e il difetto c'era lo stesso.
+
+Il nome segue l'icona, e questa e' la parte che conta: in riproduzione il pulsante si chiama "Pausa", non "Riproduci". Un nome fisso avrebbe fatto annunciare al lettore di schermo l'operazione contraria a quella che il toco avvia, che e' peggio che non annunciare niente.
+
+Anche il cursore del volume aveva un problema analogo, diverso nella forma: si annunciava come "cursore" e la percentuale si leggeva solo dal fumetto che compare trascinando. Ora ha un `semanticFormatterCallback`.
+
+Per provarli serve poter mettere il provider in uno stato noto, e non c'era la via: il pannello dei comandi si poteva costruire solo nella situazione "non collegato", dove il pulsante di riproduzione c'e' sempre e quello di pausa mai. Ho aggiunto un setter `testStatus` con `@visibleForTesting`. E' una riga di codice di produzione comprata con dodici righe di test, e mi sembra un buon affare: senza, la meta' delle Combinazioni del pannello restava non verificabile.
+
+La copertura e' salita nel frattempo: da **33.9% a 61.8%**, misurata su un `lcov.info` pulito. Non e' merito dei file spostati, che da soli non spostano una riga di test: e' che i widget estratti si potevano costruire da soli, senza un provider collegato e senza una `AppBar` intorno, e li hanno presi quasi tutti.
 
 **5.1, estratti entrambi i dialogi rimasti.** Il pannello era di 865 righe con tre dialogi scritti dentro: filtro, anteprima e conferma. Il filtro e' finito in `smart_filter_dialog.dart` quando ne ho eliminato la fuga di controller, e l'anteprima in `playlist_preview_dialog.dart`. Il pannello e' a 364 righe.
 
@@ -242,15 +291,15 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 5.1 | Scomporre `my_playlist_panel.dart` (865 righe, tre dialog enormi inline) fatto: il pannello e' a 364, dialoghi in file separati | `my_playlist_panel.dart`, `smart_filter_dialog.dart`, `playlist_preview_dialog.dart` | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **fatto** |
-| 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | **parziale** (dispose dei campi) |
-| 5.3 | Scomporre `home_screen.dart` (581 righe) fatto al primo passo: la barra di stato e' un widget a se', resta `_buildMainContent` | `home_screen.dart`, `status_bar.dart` | `home_screen.dart:234-356` | Medio | ok | **parziale** |
+| 5.1 | Scomporre `my_playlist_panel.dart` (era di 865 righe, tre dialogi enormi inline): il pannello e' a 364, i dialogi in file separati | `my_playlist_panel.dart`, `smart_filter_dialog.dart`, `playlist_preview_dialog.dart` | Alto | ok | **fatto** |
+| 5.2 | Scomporre `connection_dialog.dart` (era di 695 righe, tre schermate in un `build` da 325) | `connection_dialog.dart`, `connections/connection_card.dart`, `connections/connection_list.dart`, `connections/connection_form.dart` | Alto | ok | **fatto** (il dialogo e' a 302) |
+| 5.3 | Scomporre `home_screen.dart` (era di 581 righe, poi 458 dopo la barra di stato) | `home_screen.dart`, `status_bar.dart`, `disconnected_view.dart`, `info_dialog.dart`, `bottom_sheets.dart` | Medio | ok | **fatto** (la schermata e' a 210) |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
-| 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
-| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |
-| 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | **fatto** |
-| 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre (fatto lato client: la risposta non dipende piu' dalla chiusura) | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **fatto** |
-| 5.9 | Allineare `AppConfig` con la realtà (fatto: il file e' stato eliminato) | `home_screen.dart` | Basso | ok | **fatto** |
+| 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | Medio | ok | **fatto** |
+| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** — resta **D4** |
+| 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart` | Basso | ok | **fatto** |
+| 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre (fatto lato client: la risposta non dipende piu' dalla chiusura) | `my_playlist_service.dart` | Medio | **⚠️** comportamento server | **fatto** — **D5** resta aperta per ispezionare dal lato server |
+| 5.9 | Allineare `AppConfig` con la realta' (fatto: il file e' stato eliminato) | `home_screen.dart` | Basso | ok | **fatto** |
 
 ### Fase 5 — Igiene, log, documentazione
 
@@ -259,10 +308,10 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 6.1 | Togliere i 42 `print` di produzione che filtrano titoli e percorsi dei tuoi file | `vlc_service.dart:77-79,431-434,527` | Alto | ok | **fatto** |
 | 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | **fatto** |
 | 6.3 | Rimuovere codice morto: 16 costanti mai usate, non 9 | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** |
-| 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
-| 6.5 | `docs/CRITICAL_FIXES.md` eliminato: i quattro fix che proponeva sono nel codice, l'unico che mancava era completato adesso | | `docs/CRITICAL_FIXES.md` | Basso | ok | **fatto** |
-| 6.6 | `intl` e' gia' dipendenza ma non c'e' localizzazione: i leak in inglese corretti, il catalogo delle stringhe richiede una decisione | vari | Medio | ok | **parziale** | tutto `lib/` | Basso | ok | da fare |
-| 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali (corpo protetto e 4 tooltip aggiunti; i `Semantics` restano da fare) | `control_panel.dart:112-118,189-196` | Basso | ok | **parziale** |
+| 6.4 | Allineare le versioni: il `README` diceva 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, il CHANGELOG documentava 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **fatto** (2.7.5+1) |
+| 6.5 | `docs/CRITICAL_FIXES.md` eliminato: i quattro fix che proponeva sono nel codice, l'unico che mancava era completato adesso | `docs/CRITICAL_FIXES.md` (rimosso) | Basso | ok | **fatto** |
+| 6.6 | `intl` e' gia' dipendenza ma non c'e' localizzazione: i leak in inglese corretti, il catalogo delle stringhe richiede una decisione | vari | Medio | ok | **parziale** |
+| 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali | `home_screen.dart`, `control_panel.dart`, `connections/connection_card.dart` | Basso | ok | **fatto** |
 | 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |
 
 ---
@@ -281,7 +330,7 @@ Compila questa sezione man mano che ne parliamo, così non le perdiamo.
 | D6 | **Ordine di esecuzione.** Fase 1+2 insieme (correzioni + test) oppure Fase 0 prima? | | | |
 | D7 | **Dove tenere questo file.** Ora è in `VlcRemote/docs/REFACTORING_TODO.md`. Va spostato in MyPlaylist (perché è un progetto coordinato) o resta qui? | resta / sposta | | |
 | D8 | **Ambito del git.** Aggiungere questo file al repository, o tenerlo fuori dal tracciamento? | tracciato / gitignored / fuori repo | **tracciato** | 2026-09-26 |
-| D9 | **6.4 — Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` è ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non è ancora stata rilasciata? | bump 2.7.5 / rimandare | | |
+| D9 | **6.4 - Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` e' ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non e' ancora stata rilasciata? | bump 2.7.5 / rimandare | **bump 2.7.5**: `pubspec` a 2.7.5+1, README allineato, CHANGELOG aggiornato. Le tre letture non possono piu' divergere, perche' 5.9 fa prendere la versione a `pubspec.yaml` | 2026-09-27 |
 | D10 | **3.14 — Tempo di reazione alFallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettività prima dello stato completo? | ridurre timeout / probe veloce / lasciare così | | |
 
 ---
