@@ -49,10 +49,10 @@ void main() {
       // dopo il successo di VLC, un VLC irraggiungibile rendeva MyPlaylist
       // irraggiungibile a cascata, e i due guasti si mascheravano a vicenda.
       SharedPreferences.setMockInitialValues({});
+      final risposta = FakeMyPlaylistServer.defaultResponse;
       final mp = await FakeMyPlaylistServer.start(
         secretKey,
-        responder: (command, args) =>
-            FakeMyPlaylistServer.defaultResponse(command: command),
+        responder: (command, args) => risposta(command: command),
       );
       addTearDown(mp.close);
 
