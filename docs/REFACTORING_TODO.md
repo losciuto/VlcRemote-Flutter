@@ -4,12 +4,11 @@
 > Progetto: `VlcRemote` (client) · Server: `MyPlaylist` (`lib/services/remote_control_service.dart`)
 > Vincolo: ogni modifica deve restare **compatibile con il server MyPlaylist** (v3.14.1).
 >
-> **Dove siamo.** Le fasi 0, 1, 2, 4 e 5 sono chiuse. Delle tre voci che
-> erano aperte, **D4 e D10 sono chiuse**; **1.0 e' a meta'** e la meta' che
-> resta non puo' essere fatta dal codice: e' la revoca di un token su
-> github.com, e va fatta dopo aver messo la chiave SSH, altrimenti si perdono
-> 38 commit non pushati. I dettagli sono in **1.0, una cosa sola**.
-> Il resto del lavoro aperto e' debito di copertura, non difetti: la tabella
+> **Dove siamo.** Tutte le fasi sono chiuse. Delle tre voci che erano
+> aperte, **D4, D10 e 1.0 sono chiuse**: in 1.0 il token e' uscito dal
+> progetto e resta solo la revoca di quello vecchio, che e' un clic su
+> github.com e non blocca piu' nessuno.
+> Il lavoro aperto rimasto e' debito di copertura, non difetti: la tabella
 > sotto dice dove.
 >
 > **Numeri al 27/09/2026**: 213 test verdi, `flutter analyze` pulito,
@@ -51,7 +50,7 @@ Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che t
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | **parziale** — chiave SSH creata, resta la revoca (umana) e il cambio di remote |
+| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | **fatto**: il token e' uscito dal progetto, resta da revocare quello vecchio |
 | 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `lib/services/secure_storage_service.dart`, `connection_service.dart` | Bloccante | ok | **fatto** |
 | 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle.kts` | Bloccante | ok | **fatto** |
 | 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `lib/services/update_service.dart` | Bloccante | ok | **fatto** |
@@ -182,18 +181,15 @@ La parte interessante non era il disegno, e' la regola: MyPlaylist "configurato"
 
 Sul come provarla c'e' un dettaglio che ho imparato a meta' strada: dentro `testWidgets` il tempo e' finto, quindi una connessione socket vera non avanza mai e il test resta appeso fino a scadere, quattro minuti di attesa per un test che non poteva passare. I test sono quindi due gruppi separati: `test` per lo stato, che puo' fare I/O vero, e `testWidgets` per il disegno, che riceve i valori gia' pronti e non ha bisogno di aprire porte.
 
-**1.0, metà fatto, e la metà che resta ha un ordine obbligato.** Il token era in un solo posto: `MyPlaylist/.git/config`, dentro l'URL di `origin`. Non è in nessun file tracciato, non è nel bundle (i bundle contengono ref e oggetti, mai la config) e il backup del 26/09 esclude `.git/` interamente. `VlcRemote` ha il remote pulito. Quindi il raggio è un file su questa macchina, ma un PAT classico è una credenziale al portatore: chi ha la stringa ha l'account, e quel file finisce fuori nei modi più banili — un `cat .git/config` durante una dimostrazione, un `git config --list` incollato in un bug report, un `tar` della cartella.
+**1.0, il token è uscito dal progetto.** Era in un solo posto: `MyPlaylist/.git/config`, dentro l'URL di `origin`. Non era in nessun file tracciato, non nel bundle (i bundle contengono ref e oggetti, mai la config) né nel backup del 26/09, che esclude `.git/` interamente. Ma un PAT classico è una credenziale al portatore, e quel file finisce fuori nei modi più banili: un `cat .git/config` durante una dimostrazione, un `git config --list` incollato in un bug report, un `tar` della cartella. Cancellare la riga non basta, perché non invalida il token.
 
-Cancellare la riga non basta: non invalida il token, che continua a funzionare finché non lo revochi. La CI non lo usa (usa `secrets.GPG_PRIVATE_KEY`), quindi quel token serve solo per i push locali e si può eliminare senza toccare nulla.
+La prima strada pensata era SSH, e si è rivelata impraticabile: su questa macchina non c'era nessuna chiave. Ne ho generata una, e prima di usarla ho contato i commit in attesa — **38 in VlcRemote, 4 in MyPlaylist** — e mi sono fermato, perché cambiare il remote prima che la chiave fosse registrata avrebbe lasciato 42 commit di lavoro senza modo di uscire. Chiave generata e poi rimossa, perché non serviva a niente.
 
-Fatto: ho generato `~/.ssh/id_ed25519_github`, una chiave dedicata. Non ho toccato il remote, e il motivo è il punto importante: **VlcRemote ha 38 commit non pushati e MyPlaylist ne ha 4**. Passare il remote a SSH prima che la chiave sia su github.com lascerebbe i due repository senza modo di pushare. Quindi l'ordine non è negoziabile:
+Quello che è rimasto è `gh`, che era già installato. `gh auth login` chiede un codice monouso nel browser e produce un token nuovo con gli scope giusti (`gist`, `read:org`, `repo`); `gh auth setup-git` fa rispondere git a chi lo chiama al momento del bisogno. Il token finisce nel **keyring di sistema**: non è in un file della cartella progetto, non è in `~/.netrc`, ed è in un posto che `gh` sa ruotare da solo.
 
-1. aggiungere la chiave pubblica su github.com (Settings → SSH and GPG keys → New SSH key);
-2. verificare che `ssh -T git@github.com` risponda;
-3. **solo allora** revocare il token (Settings → Developer settings → Personal access tokens);
-4. e a quel punto il remote passa a SSH, per me.
+Il remote di MyPlaylist ora è `https://github.com/losciuto/MyPlaylist.git`, identico a quello di VlcRemote, e `git config` non contiene più nessuna credenziale. Verificato con un `push --dry-run` su entrambi i repository, che è la prova che conta: i 42 commit sono ancora lì e il percorso di push funziona per entrambi.
 
-Fino al punto 3 il token è ancora valido, quindi la finestra di esposizione resta aperta: è il prezzo di non voler perdere 42 commit di lavoro.
+Resta un passo solo, e non blocca niente: ** revocare il vecchio `ghp_` su github.com**. Fino a quel momento quel token resta valido, e la finitura non lo chiude da sola.
 
 **3.14, la sonda esisteva già e non era dove sembrava.** Con VLC collegato ma morto, `getStatus` mandava cinque comandi in sequenza, ognuno con un timeout da 1,5 secondi, e il provider ne ritenta tre: 22 secondi e mezzo. La correzione non è accorciare i timeout — cambierebbe il comportamento su una rete lenta, che è il caso normale di un telecomando di casa — né aggiungere una sonda TCP davanti, che ripeterebbe un'informazione ottenibile gratis.
 
@@ -364,6 +360,7 @@ Compila questa sezione man mano che ne parliamo, così non le perdiamo.
 | D8 | **Ambito del git.** Aggiungere questo file al repository, o tenerlo fuori dal tracciamento? | tracciato / gitignored / fuori repo | **tracciato** | 2026-09-26 |
 | D9 | **6.4 - Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` e' ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non e' ancora stata rilasciata? | bump 2.7.5 / rimandare | **bump 2.7.5**: `pubspec` a 2.7.5+1, README allineato, CHANGELOG aggiornato. Le tre letture non possono piu' divergere, perche' 5.9 fa prendere la versione a `pubspec.yaml` | 2026-09-27 |
 | D10 | **3.14 — Tempo di reazione al fallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettivita' prima dello stato completo? | ridurre timeout / probe veloce / lasciare cosi' | **probe, ma non una sonda TCP**: il probe e' il comando `status`, che va per primo e, se tace, evita gli altri quattro. Timeout invariati, perche' accorciarli peggiorerebbe il caso normale su rete lenta per far migliorare uno raro | 2026-09-27 |
+| D11 | **1.0 — Come si autentica git su questa macchina dopo il 27/09.** Il token era dentro l'URL del remote. Ora e' `gh` che risponde a git, col token nel keyring. Va documentato, perche' se `gh` viene disinstallato o il keyring non parte, i push falliscono e il motivo non e' ovvio | `gh` + keyring / PAT nel remote / `~/.netrc` | **`gh` + keyring**, e questa risposta chiude anche 1.0: il token non e' piu' nel progetto e si ruota con `gh auth refresh` invece che a mano sul web. Se un domani i push smettono di funzionare, il primo controllo e' `gh auth status` | 2026-09-27 |
 
 ---
 
