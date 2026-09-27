@@ -5,6 +5,32 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 class MyPlaylistService {
+  /// Verifica che il server risponda, senza inviare nessun comando.
+  ///
+  /// Apre e chiude subito la connessione: basta che il server accetti il
+  /// collegamento per sapere che e' vivo. Non usa il protocollo crittografato
+  /// perche' qui non c'e' niente da dire, solo da vedere.
+  ///
+  /// Vive qui e non nel provider perche' richiede `dart:io`, e il provider
+  /// non deve avercelo.
+  Future<bool> isReachable({
+    required String host,
+    required int port,
+    Duration timeout = const Duration(seconds: 1),
+  }) async {
+    Socket? socket;
+    try {
+      socket = await Socket.connect(host, port, timeout: timeout);
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      // `destroy` e' preferibile a `close`: chiude subito, senza attendere
+      // che l'altra parte risponda.
+      socket?.destroy();
+    }
+  }
+
   final AesGcm algorithm = AesGcm.with256bits();
 
   /// URL della copertina di un video, esposta dal server su porta + 1.

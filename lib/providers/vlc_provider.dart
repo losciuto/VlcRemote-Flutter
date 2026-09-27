@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import '../models/vlc_connection.dart';
@@ -11,6 +10,7 @@ import '../exceptions/vlc_exceptions.dart';
 import '../services/vlc_service.dart';
 import '../services/vlc_http_service.dart';
 import '../services/connection_service.dart';
+import '../services/local_process_service.dart';
 import '../services/my_playlist_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_logger.dart';
@@ -38,11 +38,13 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     ConnectionService? connectionService,
     MyPlaylistService? myPlaylistService,
     SettingsService? settingsService,
+    LocalProcessService? localProcessService,
   }) : _vlcService = vlcService ?? VlcService(),
        _vlcHttpService = vlcHttpService ?? VlcHttpService(),
        _connectionService = connectionService ?? ConnectionService(),
        _myPlaylistService = myPlaylistService ?? MyPlaylistService(),
-       _settingsService = settingsService ?? SettingsService() {
+       _settingsService = settingsService ?? SettingsService(),
+       _localProcessService = localProcessService ?? LocalProcessService() {
     WidgetsBinding.instance.addObserver(this);
     _init();
   }
@@ -52,6 +54,7 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   final ConnectionService _connectionService;
   final MyPlaylistService _myPlaylistService;
   final SettingsService _settingsService;
+  final LocalProcessService _localProcessService;
 
   VlcConnection? _currentConnection;
   VlcStatus _status = VlcStatus();
@@ -659,7 +662,7 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   /// Restituisce un messaggio con l'esito, o `null` se non c'e' niente da fare
   /// (mobile, o server remoto).
   Future<String?> killLocalVlcIfSameMachine() async {
-    if (!Platform.isLinux && !Platform.isWindows && !Platform.isMacOS) {
+    if (!_localProcessService.isDesktop) {
       return null;
     }
 
@@ -676,18 +679,16 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     }
 
     try {
-      final ProcessResult result = Platform.isWindows
-          ? await Process.run('taskkill', ['/F', '/IM', 'vlc.exe', '/T'])
-          : await Process.run('pkill', ['-x', 'vlc']);
+      final exitCode = await _localProcessService.killVlc();
 
-      if (result.exitCode == 0) {
+      if (exitCode == 0) {
         return 'Comando kill locale eseguito';
       }
-      if (result.exitCode == 1) {
+      if (exitCode == 1) {
         // pkill/taskkill restituiscono 1 quando nessun processo corrisponde.
         return 'Nessun processo VLC su questa macchina';
       }
-      return 'Kill locale fallito (codice ${result.exitCode})';
+      return 'Kill locale fallito (codice $exitCode)';
     } catch (e) {
       return 'Errore kill locale: $e';
     }
@@ -784,24 +785,20 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   Future<void> _probeMyPlaylist() async {
     if (!isMyPlaylistConfigured || _isMyPlaylistBusy) return;
 
-    try {
-      final socket = await Socket.connect(
-        _currentConnection!.myPlaylistIp!,
-        _currentConnection!.myPlaylistPort ??
-            AppConstants.defaultMyPlaylistPort,
-        timeout: const Duration(seconds: 1),
-      );
-      socket.destroy();
+    // `isReachable` non lancia: risponde con un booleano, quindi qui non
+    // serve distinguere "non risponde" da "errore", che per questa sonda
+    // indicano la stessa cosa.
+    final raggiungibile = await _myPlaylistService.isReachable(
+      host: _currentConnection!.myPlaylistIp!,
+      port:
+          _currentConnection!.myPlaylistPort ??
+          AppConstants.defaultMyPlaylistPort,
+    );
 
-      if (_lastMpStatus != 'SUCCESS') {
-        _lastMpStatus = 'SUCCESS';
-        notifyListeners();
-      }
-    } catch (e) {
-      if (_lastMpStatus != 'ERROR') {
-        _lastMpStatus = 'ERROR';
-        notifyListeners();
-      }
+    final nuovoStato = raggiungibile ? 'SUCCESS' : 'ERROR';
+    if (_lastMpStatus != nuovoStato) {
+      _lastMpStatus = nuovoStato;
+      notifyListeners();
     }
   }
 

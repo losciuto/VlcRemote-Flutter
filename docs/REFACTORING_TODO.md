@@ -150,6 +150,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**5.5, spostare il comando ha reso testabile la parte piu' pericolosa del provider.** `Process.run` stava dentro `killLocalVlcIfSameMachine`, cioe' nel provider. Ora c'e' `LocalProcessService`, che espone solo il codice di uscita: `dart:io` non attraversa la firma e chi chiama non deve saperne qualcosa. Il servizio e' iniettabile, quindi la logica si puo' provare senza un sistema operativo sotto.
+
+I sette test coprono soprattutto il caso in cui non si deve fare niente: server su un'altra macchina, MyPlaylist non configurato, piattaforma senza processi. Uccidere il VLC del portatile mentre si comanda quello del salotto lascerebbe l'utente senza riproduzione, ed e' il motivo per cui quel codice esiste. Tolto il controllo che confronta l'indirizzo con quelli locali, il test lo segnala.
+
+**5.6, il provider non usa piu' `dart:io`.** Eliminando `Process.run` restava una `Socket.connect` per la sonda di MyPlaylist, ed e' finita anche lei in `MyPlaylistService.isReachable`, che risponde con un booleano invece di far lanciare. Restano `dart:io` nei servizi che devono davvero aprire socket e file: la build web resta fuori discussione e va decisa, non aggirata.
+
 **5.1, la prima parte ha eliminato una fuga di risorse.** Il dialogo dei filtri creava nove `TextEditingController` nel metodo che lo apriva e non li liberava mai: ogni apertura ne lasciava nove in giro, ognuno con i suoi listener. Ora e' un `State` che li crea in `initState` e li distruisce in `dispose`, e il `StatefulBuilder` che serviva solo per chiamare `setState` non serve piu'. Il file passa da 865 a 599 righe.
 
 Un test lo verifica davvero invece di fidarsi: chiude il dialogo, prende un controller dall'albero e prova ad aggiungere un listener. Su un controller distrutto questo lancia, ed e' esattamente cio' che deve succedere. Tolta la riga che lo distrugge, il test fallisce.
@@ -190,8 +196,8 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | da fare |
 | 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
-| 5.5 | Spostare `Process.run` fuori dal layer di stato; spostare il download APK fuori dal widget | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | da fare |
-| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **decisione** |
+| 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | `vlc_provider.dart:508-549`, `update_dialog.dart:4,50-71` | Medio | ok | **fatto** |
+| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |
 | 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | da fare |
 | 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **decisione** |
 | 5.9 | Allineare `AppConfig` con la realtà (dichiara porta 4242, la UI usa 8000/8080) | `app_config.dart:13-15,44-45` | Basso | ok | **parziale**: i default delle porte ora vivono in `AppConstants`; `AppConfig.defaultVlcPort = 4242` resta sbagliato e inutilizzato |
