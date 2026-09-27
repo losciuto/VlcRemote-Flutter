@@ -26,6 +26,20 @@ void main() {
       expect(isVersionGreater('v2.7.4', 'v2.7.4'), isFalse);
     });
 
+    test('ignora la maiuscola del prefisso v', () {
+      // Regressione: il 27/09 esisteva una release 'V2.7.5' con la v
+      // maiuscola, e `releases/latest` la restituiva al posto di 'v2.7.5'.
+      // Con il confronto sensibile al caso, 'V2' non e' un intero e diventava
+      // 0: la versione risultava [0, 7, 5], minore di qualunque 2.x, e
+      // l'aggiornamento non veniva offerto a nessuno senza dare errori.
+      expect(isVersionGreater('V2.7.5', '2.7.4+1'), isTrue);
+      expect(isVersionGreater('v2.7.5', '2.7.4+1'), isTrue);
+      expect(isVersionGreater('V2.7.4+1', 'V2.7.4+1'), isFalse);
+      // La V non deve pero' valere come versione: senza prefisso, 2.7.5 resta
+      // maggiore di 2.7.4.
+      expect(isVersionGreater('2.7.5', '2.7.4'), isTrue);
+    });
+
     test('ignora i metadati di build (+N)', () {
       // Regressione: '4+1' non e' un intero, il confronto deve usare solo il
       // numero di versione, non il build number di Android.

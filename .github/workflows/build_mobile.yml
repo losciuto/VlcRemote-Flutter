@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Tag Versione per la Release (es: v2.4.0)'
+        description: 'Tag versione della release (es. v2.7.5). Vuoto per fallire: un default avrebbe creato una release fasulla.'
         required: true
-        default: 'v1.0.0'
+        default: ''
 
 jobs:
   build-android:
@@ -29,6 +29,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
+          flutter-version: "3.47.5"
 
       - name: Install dependencies
         run: flutter pub get
@@ -54,10 +55,25 @@ jobs:
         with:
           name: app-release.apk
 
+      - name: Verifica il tag
+        id: tag
+        env:
+          RAW: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$(printf '%s' "$RAW" | tr '[:upper:]' '[:lower:]')"
+          [[ "$tag" == v* ]] || tag="v$tag"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$RAW' non valido ('$tag'): la forma attesa e' vX.Y.Z"
+            exit 1
+          fi
+          [[ "$tag" == "$RAW" ]] || echo "::warning::Tag '$RAW' normalizzato a '$tag'"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.tag }}
           files: app-release.apk
           fail_on_unmatched_files: false
           generate_release_notes: true

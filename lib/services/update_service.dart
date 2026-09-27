@@ -10,12 +10,16 @@ import '../utils/app_logger.dart';
 ///
 /// Accetta un eventuale 'v' iniziale ('v2.8.0'), i metadati di build ('2.7.4+1')
 /// e i prerelease ('2.8.0-rc1'), che non incidono sull'ordine numerico.
+/// La 'v' non distingue maiuscola da minuscola: un tag 'V2.7.5' non e' un
+/// caso teorico, e senza questo confronto tornerebbe [0, 7, 5] invece di
+/// [2, 7, 5], cioe' una versione *minore* di qualunque 2.x: l'aggiornamento
+/// non verrebbe offerto e senza alcun errore in segno.
 /// Restituisce true solo se [latest] è strettamente maggiore di [current].
 bool isVersionGreater(String latest, String current) {
   List<int> parse(String version) {
     return version
         .trim()
-        .replaceFirst(RegExp(r'^v'), '')
+        .replaceFirst(RegExp(r'^v', caseSensitive: false), '')
         .split('+')
         .first
         .split('-')
