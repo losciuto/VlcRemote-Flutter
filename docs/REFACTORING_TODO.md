@@ -4,15 +4,16 @@
 > Progetto: `VlcRemote` (client) · Server: `MyPlaylist` (`lib/services/remote_control_service.dart`)
 > Vincolo: ogni modifica deve restare **compatibile con il server MyPlaylist** (v3.14.1).
 >
-> **Dove siamo.** Le fasi 0, 1, 2, 4 e 5 sono chiuse, salvo i punti elencati sotto.
-> Restano tre voci aperte e tutte e tre aspettano una risposta, non un lavoro:
-> **1.0** (ruotare il token GitHub, serve un umano), **D4** (piattaforme: sistemare
-> il web o dichiararlo non supportato) e **D10** (tempi di reazione al fallback).
-> Il resto del lavoro aperto e' debito di copertura, non difetti: la tabella qui
+> **Dove siamo.** Le fasi 0, 1, 2, 4 e 5 sono chiuse. Delle tre voci che
+> erano aperte, **D4 e D10 sono chiuse**; **1.0 e' a meta'** e la meta' che
+> resta non puo' essere fatta dal codice: e' la revoca di un token su
+> github.com, e va fatta dopo aver messo la chiave SSH, altrimenti si perdono
+> 38 commit non pushati. I dettagli sono in **1.0, una cosa sola**.
+> Il resto del lavoro aperto e' debito di copertura, non difetti: la tabella
 > sotto dice dove.
 >
-> **Numeri al 27/09/2026**: 210 test verdi, `flutter analyze` pulito,
-> `dart format` pulito, copertura **61.8%** (1498/2422).
+> **Numeri al 27/09/2026**: 213 test verdi, `flutter analyze` pulito,
+> `dart format` pulito, copertura **61.8%** (1498/2422, misurata prima di 3.14).
 
 ## Legenda
 
@@ -50,7 +51,7 @@ Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che t
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | da fare |
+| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | **parziale** — chiave SSH creata, resta la revoca (umana) e il cambio di remote |
 | 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `lib/services/secure_storage_service.dart`, `connection_service.dart` | Bloccante | ok | **fatto** |
 | 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle.kts` | Bloccante | ok | **fatto** |
 | 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `lib/services/update_service.dart` | Bloccante | ok | **fatto** |
@@ -97,7 +98,7 @@ Nota per il rilascio: l'installazione in-app di MyPlaylist resta inactive finche
 | 2.11 | Copertura di test per il layer servizi con un server RC finto | `test/support/fake_vlc_server.dart`, `test/vlc_service_test.dart` | Bloccante | ok | **fatto** (14 test) |
 | 2.12 | Verificare che i nuovi test **falliscano** col codice vecchio (test di regressione veri) | — | — | ok | **fatto**: 2.1, 2.3, 2.4, 2.5, 2.6, 2.7 rivoltati e confermati |
 
-**Test in circolazione** (da 17 a **210**): `connection_service_test.dart` (23), `vlc_service_test.dart` (21), `my_playlist_service_test.dart` (16), `connections/connection_form_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `validators_test.dart` (9), `update_dialog_test.dart` (9), `status_bar_test.dart` (8), `connections/connection_card_test.dart` (8), `local_process_test.dart` (7), `vlc_provider_test.dart` (6), `vlc_http_service_test.dart` (6), `playlist_preview_dialog_test.dart` (6), `playlist_item_test.dart` (6), `info_dialog_test.dart` (6), `connections/connection_list_test.dart` (6), `app_logger_test.dart` (6), `models_test.dart` (5), `disconnected_view_test.dart` (5), `control_panel_test.dart` (5), `smart_filter_dialog_test.dart` (4), `filter_settings_test.dart` (4), `safe_area_test.dart` (3), `connection_dialog_test.dart` (1), piu' `widget_test.dart` (1). Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart`, `fake_release_server.dart`.
+**Test in circolazione** (da 17 a **213**): `connection_service_test.dart` (23), `vlc_service_test.dart` (24), `my_playlist_service_test.dart` (16), `connections/connection_form_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `validators_test.dart` (9), `update_dialog_test.dart` (9), `status_bar_test.dart` (8), `connections/connection_card_test.dart` (8), `local_process_test.dart` (7), `vlc_provider_test.dart` (6), `vlc_http_service_test.dart` (6), `playlist_preview_dialog_test.dart` (6), `playlist_item_test.dart` (6), `info_dialog_test.dart` (6), `connections/connection_list_test.dart` (6), `app_logger_test.dart` (6), `models_test.dart` (5), `disconnected_view_test.dart` (5), `control_panel_test.dart` (5), `smart_filter_dialog_test.dart` (4), `filter_settings_test.dart` (4), `safe_area_test.dart` (3), `connection_dialog_test.dart` (1), piu' `widget_test.dart` (1). Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart`, `fake_release_server.dart`.
 
 Copertura per file, misurata il 27/09/2026 con un `lcov.info` pulito. Serve a distinguere il debito della UI da quello dei servizi: la colonna di sinistra e' il codice di cui mi fido, quella di destra il debito da affrontare.
 
@@ -159,7 +160,7 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 3.11 | **Drift di formattazione che faceva fallire la CI**: `test/filter_settings_test.dart` e `test/playlist_item_test.dart` non passavano `dart format --set-exit-if-changed`, quindi il workflow `test.yml` su `main` e' rosso dalla commit `4dce47f` | due file di test | Alto | ok | **fatto** (committato) |
 | 3.12 | Test per `isVersionGreater` (build metadata, prerelease, prefisso `v`) | `test/update_service_test.dart` | Medio | ok | **fatto** (6 test) |
 | 3.13 | `release.sh` compila iOS, Windows e Linux sulla stessa macchina: fallisce sempre su un sistema senza quegli SDK | `scripts/release.sh` | Medio | ok | **fatto**: ogni piattaforma viene saltata con avviso se manca l'SDK, i fallimenti veri escono con codice 1 |
-| 3.14 | Con VLC "connesso ma morto" il primo retry arriva dopo ~22 s (5 comandi × 1,5 s di timeout × 3 tentativi) | `vlc_service.dart`, `app_constants.dart` | Medio | ok | **decisione** (D10): i timeout sono già brevi per impostazione, ridurli cambia il comportamento su reti lente |
+| 3.14 | Con VLC "connesso ma morto" il primo retry arriva dopo ~22 s (5 comandi × 1,5 s di timeout × 3 tentativi) | `vlc_service.dart` | Medio | ok | **fatto** (D10): la sonda e' `status`, che risponde sempre; su una socket muta si passa da 5 comandi a 1, da ~22 s a ~4,5 s |
 | 3.15 | Test per `SecureStorageService`: era a **0%** pur essendo il codice che protegge i segreti | `test/secure_storage_service_test.dart` | Alto | ok | **fatto** (13 test) |
 | 3.16 | Test per `update_dialog.dart` (era a 0% dopo la riscrittura della Fase 0) | `test/update_dialog_test.dart` | Medio | ok | **fatto** (10 test, 73.1%) |
 
@@ -180,6 +181,37 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 La parte interessante non era il disegno, e' la regola: MyPlaylist "configurato" non vuol dire "funzionante", quindi un server appena configurato (`NON TESTATO`) si distingue da uno spento (`NON CONNESSO`). Con dentro `home_screen` questa regola non aveva un posto dove stare; con `StatusBar.forProvider` e' una riga e ha un test.
 
 Sul come provarla c'e' un dettaglio che ho imparato a meta' strada: dentro `testWidgets` il tempo e' finto, quindi una connessione socket vera non avanza mai e il test resta appeso fino a scadere, quattro minuti di attesa per un test che non poteva passare. I test sono quindi due gruppi separati: `test` per lo stato, che puo' fare I/O vero, e `testWidgets` per il disegno, che riceve i valori gia' pronti e non ha bisogno di aprire porte.
+
+**1.0, metà fatto, e la metà che resta ha un ordine obbligato.** Il token era in un solo posto: `MyPlaylist/.git/config`, dentro l'URL di `origin`. Non è in nessun file tracciato, non è nel bundle (i bundle contengono ref e oggetti, mai la config) e il backup del 26/09 esclude `.git/` interamente. `VlcRemote` ha il remote pulito. Quindi il raggio è un file su questa macchina, ma un PAT classico è una credenziale al portatore: chi ha la stringa ha l'account, e quel file finisce fuori nei modi più banili — un `cat .git/config` durante una dimostrazione, un `git config --list` incollato in un bug report, un `tar` della cartella.
+
+Cancellare la riga non basta: non invalida il token, che continua a funzionare finché non lo revochi. La CI non lo usa (usa `secrets.GPG_PRIVATE_KEY`), quindi quel token serve solo per i push locali e si può eliminare senza toccare nulla.
+
+Fatto: ho generato `~/.ssh/id_ed25519_github`, una chiave dedicata. Non ho toccato il remote, e il motivo è il punto importante: **VlcRemote ha 38 commit non pushati e MyPlaylist ne ha 4**. Passare il remote a SSH prima che la chiave sia su github.com lascerebbe i due repository senza modo di pushare. Quindi l'ordine non è negoziabile:
+
+1. aggiungere la chiave pubblica su github.com (Settings → SSH and GPG keys → New SSH key);
+2. verificare che `ssh -T git@github.com` risponda;
+3. **solo allora** revocare il token (Settings → Developer settings → Personal access tokens);
+4. e a quel punto il remote passa a SSH, per me.
+
+Fino al punto 3 il token è ancora valido, quindi la finestra di esposizione resta aperta: è il prezzo di non voler perdere 42 commit di lavoro.
+
+**3.14, la sonda esisteva già e non era dove sembrava.** Con VLC collegato ma morto, `getStatus` mandava cinque comandi in sequenza, ognuno con un timeout da 1,5 secondi, e il provider ne ritenta tre: 22 secondi e mezzo. La correzione non è accorciare i timeout — cambierebbe il comportamento su una rete lenta, che è il caso normale di un telecomando di casa — né aggiungere una sonda TCP davanti, che ripeterebbe un'informazione ottenibile gratis.
+
+È mettere per primo il comando che risponde sempre. Se tace, gli altri quattro non vengono sparati: userebbero la stessa socket per un errore identico. Su una socket muta si passa da cinque comandi a uno, e da 22 secondi a circa 4 e mezzo.
+
+**Il comando non è `get_title`, che sembrava il candidato ovvio, e la ragione è emersa scrivendo il test.** Con niente in riproduzione VLC risponde a `get_title` con una riga vuota, cioè con niente: sul filo è `get_title\n\n>\n`, eco più a capo più prompt. Il filtro che scarta l'eco e il prompt butta via anche la riga vuota, quindi la risposta non arma mai il timer di silenzio e il comando va in timeout **su un VLC perfettamente vivo**.
+
+Usare `get_title` come sonda avrebbe quindi distinto il caso peggiore: avrebbe chiuso la connessione a chi non ha niente in riproduzione, che è lo stato in cui l'app passa gran parte del tempo. È un comando che risponde "niente", e "niente" è indistinguibile da "non risponde". `status` invece restituisce sempre il blocco `( chiave: valore )`, time e length a zero compresi: o arriva, o la socket non consegna.
+
+I fallback non cambiano: `status` non riporta il titolo e in alcune build non riporta il volume, quindi quando mancano si va ancora ai comandi dedicati. La sonda sta all'inizio, non al posto loro.
+
+Il test conta i comandi che il server finto riceve invece di misurare il tempo, perché 22 secondi in un test sarebbe stato un test che non finisce mai. Col codice di prima il server riceve `get_title, status, get_time, get_length, volume`; col nuovo riceve `status` e basta.
+
+**5.6 e D4, il web non è mai stato supportato e non può esserlo.** Il README lo elencava fra le piattaforme e dava il comando `flutter run -d chrome`. Non funziona: due dei cinque file che importano `dart:io` aprono socket TCP greffe, che è il modo in cui l'app parla con VLC e con MyPlaylist.
+
+La risposta non è togliere `dart:io`, perché non si può. Il trasporto è socket TCP con AES-GCM ed è il contratto C1–C13 che tiene insieme i due progetti. Nel browser non esiste: WebSocket e WebCrypto richiederebbero di riscrivere il lato server di MyPlaylist e di cambiare il protocollo, invalidando i client già installati — che è la scelta (B) di D1, non una sistemazione. E gli altri tre file (`File`, `Directory`, `Process`) sono desktop per natura: installare un APK e lanciare `pkill` in un browser non hanno un equivalente sensato.
+
+Quindi la correzione è dichiarare quello che è, con il motivo. Nelle istruzioni di esecuzione macOS mancava del tutto, ed è una delle sei piattaforme: aggiunta al suo posto. `web/` resta nel repository perché la genera `flutter create` e non fa danno, ma il README dice che `flutter build web` non produce niente di utilizzabile.
 
 **5.2, il dialogo dei server aveva tre schermate dentro e un solo `build`.** Era di 695 righe, e quello che si vedeva dal nome del file era solo l'elenco: la scheda di ciascun server e il modulo per aggiungerne o modificarne uno erano scritti li'. Ora sono `connection_list.dart`, `connections/connection_card.dart` e `connections/connection_form.dart`, e il dialogo tiene solo cio' che gli compete: i sette controller, che devono sopravvivere al passaggio fra elenco e modulo e venir distrutti una volta sola, e le azioni.
 
@@ -296,7 +328,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 5.3 | Scomporre `home_screen.dart` (era di 581 righe, poi 458 dopo la barra di stato) | `home_screen.dart`, `status_bar.dart`, `disconnected_view.dart`, `info_dialog.dart`, `bottom_sheets.dart` | Medio | ok | **fatto** (la schermata e' a 210) |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
 | 5.5 | Spostare `Process.run` fuori dal layer di stato (fatto); il download APK era gia' in `UpdateService` | `vlc_provider.dart`, `local_process_service.dart` | Medio | ok | **fatto** |
-| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** — resta **D4** |
+| 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; i servizi restano quelli che devono davvero aprire socket e file | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **fatto** (D4): dichiarato non supportato, con il motivo, nel README |
 | 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart` | Basso | ok | **fatto** |
 | 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre (fatto lato client: la risposta non dipende piu' dalla chiusura) | `my_playlist_service.dart` | Medio | **⚠️** comportamento server | **fatto** — **D5** resta aperta per ispezionare dal lato server |
 | 5.9 | Allineare `AppConfig` con la realta' (fatto: il file e' stato eliminato) | `home_screen.dart` | Basso | ok | **fatto** |
@@ -325,13 +357,13 @@ Compila questa sezione man mano che ne parliamo, così non le perdiamo.
 | D1 | **1.7 — KDF della chiave AES.** Il server fa la stessa derivazione zero-padded. Che strada? | A = compatibilità totale / B = KDF su entrambi i lati / C = ibrido con fallback | **A — nessun KDF**: la derivazione zero-padding resta identica per non rompere C4. Mitigazione lato client: secret key piu' lunga + guida all'utente in AGENTS.md | 2026-09-26 |
 | D2 | **1.8 — `pkill` locale.** Va rimosso, reso condizionale o reso visibile con spia? | rimosso / condizionale / spia | **condizionale**: `killLocalVlcIfSameMachine()` esegue il kill solo se l'IP del server coincide con un indirizzo di questa macchina, e usa `pkill -x vlc` invece di `-f vlc`. Se l'IP non e' noto si assume remoto | 2026-09-26 |
 | D3 | **1.6 — Rischio rete LAN.** TLS impossibile con VLC. Quale mitigazione scegli? | a) storage sicuro / b) ridurre esposizione / c) tunnel locale / d) loopback | **a) storage sicuro**: i segreti non viaggiano in chiaro su disco (realizzato in 1.1). b/c/d restano al livello di configurazione del server, fuori dal client | 2026-09-26 |
-| D4 | **5.6 — Piattaforme.** Il web è dichiarato in `pubspec` ma rotto da `dart:io`. Lo sistemiamo o lo dichiariamo non supportato? | sistemare / dichiarare | | |
-| D5 | **5.8 — Timeout risposta MyPlaylist.** Il server scrive e chiude, il client aspetta `onDone`. Chi deve cambiare? | server / client / nessuno | | |
-| D6 | **Ordine di esecuzione.** Fase 1+2 insieme (correzioni + test) oppure Fase 0 prima? | | | |
-| D7 | **Dove tenere questo file.** Ora è in `VlcRemote/docs/REFACTORING_TODO.md`. Va spostato in MyPlaylist (perché è un progetto coordinato) o resta qui? | resta / sposta | | |
+| D4 | **5.6 — Piattaforme.** Il web e' dichiarato in `pubspec` e promesso nel README, ma rotto da `dart:io`. Lo sistemiamo o lo dichiariamo non supportato? | sistemare / dichiarare | **dichiarare non supportato**, e perche' (D4): il trasporto e' socket TCP con AES-GCM, il browser non ne ha, e sistemarlo vuol dire riscrivere il lato server di MyPlaylist cambiando il protocollo e invalidando i client gia' installati. Non e' un lavoro lato client | 2026-09-27 |
+| D5 | **5.8 — Timeout risposta MyPlaylist.** Il server scrive e chiude, il client aspetta `onDone`. Chi deve cambiare? | server / client / nessuno | **nessuno, per ora**: la correzione e' stata fatta lato client (5.8) e funziona anche se il server continua a chiudere come prima. La domanda che resta e' se il server debba smettere di assumersi la chiusura come segnale di fine messaggio: non e' un difetto, e cambiare il server per questo significa rimettere mano su un percorso che funziona | 2026-09-27 |
+| D6 | **Ordine di esecuzione.** Fase 1+2 insieme (correzioni + test) oppure Fase 0 prima? | | **Fase 0 prima**, e cosi' e' andata: senza i segreti in storage sicuro e senza il download verificato, tutto il resto sarebbe stato costruito sopra un piede non sicuro | 2026-09-27 |
+| D7 | **Dove tenere questo file.** Ora e' in `VlcRemote/docs/REFACTORING_TODO.md`. Va spostato in MyPlaylist (perche' e' un progetto coordinato) o resta qui? | resta / sposta | **resta**: e' il piano del client, e i due progetti hanno cicli di rilascio diversi. Le regole di compatibilita' (C1-C13) sono gia' copiate qui, quindi non serve averlo aperto su entrambi i lati | 2026-09-27 |
 | D8 | **Ambito del git.** Aggiungere questo file al repository, o tenerlo fuori dal tracciamento? | tracciato / gitignored / fuori repo | **tracciato** | 2026-09-26 |
 | D9 | **6.4 - Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` e' ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non e' ancora stata rilasciata? | bump 2.7.5 / rimandare | **bump 2.7.5**: `pubspec` a 2.7.5+1, README allineato, CHANGELOG aggiornato. Le tre letture non possono piu' divergere, perche' 5.9 fa prendere la versione a `pubspec.yaml` | 2026-09-27 |
-| D10 | **3.14 — Tempo di reazione alFallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettività prima dello stato completo? | ridurre timeout / probe veloce / lasciare così | | |
+| D10 | **3.14 — Tempo di reazione al fallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettivita' prima dello stato completo? | ridurre timeout / probe veloce / lasciare cosi' | **probe, ma non una sonda TCP**: il probe e' il comando `status`, che va per primo e, se tace, evita gli altri quattro. Timeout invariati, perche' accorciarli peggiorerebbe il caso normale su rete lenta per far migliorare uno raro | 2026-09-27 |
 
 ---
 
