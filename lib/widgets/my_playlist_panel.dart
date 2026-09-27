@@ -406,6 +406,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
                                               icon: const Icon(Icons.close),
                                               onPressed: () =>
                                                   Navigator.pop(ctx),
+                                              tooltip: 'Chiudi',
                                             ),
                                           ],
                                         ),

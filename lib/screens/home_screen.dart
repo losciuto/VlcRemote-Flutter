@@ -52,9 +52,18 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset('assets/icon/icon.png', width: 32, height: 32),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'VLC Remote',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+            // Su uno schermo stretto il titolo non ci sta accanto alle
+            // azioni e finisce sopra l'icona di connessione. Con `Flexible`
+            // si accorcia con i puntini invece di uscire dai bordi.
+            Flexible(
+              child: Text(
+                'VLC Remote',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
             ),
           ],
         ),
@@ -81,17 +90,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer<VlcProvider>(
-        builder: (context, provider, _) {
-          return Column(
-            children: [
-              // Barra di Stato Globale (Avvisi di Collegamento)
-              _buildStatusBar(context, provider),
+      // Il corpo arriva fino in fondo allo schermo: senza questo, l'ultimo
+      // pannello finisce sotto la barra dei gesti del telefono e con i
+      // pulsanti di volume sul bordo. La `AppBar` copre gia' il bordo
+      // superiore, quindi qui serve solo il basso.
+      body: SafeArea(
+        top: false,
+        child: Consumer<VlcProvider>(
+          builder: (context, provider, _) {
+            return Column(
+              children: [
+                // Barra di Stato Globale (Avvisi di Collegamento)
+                _buildStatusBar(context, provider),
 
-              Expanded(child: _buildMainContent(context, provider)),
-            ],
-          );
-        },
+                Expanded(child: _buildMainContent(context, provider)),
+              ],
+            );
+          },
+        ),
       ),
       floatingActionButton: Consumer<VlcProvider>(
         builder: (context, provider, _) {

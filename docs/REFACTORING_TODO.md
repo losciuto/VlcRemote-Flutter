@@ -150,6 +150,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**6.7, il test per i bordi ha trovato un altro difetto.** Il corpo della schermata non aveva `SafeArea`: su un telefono con barra dei gesti l'ultimo pannello, quello con i comandi, finiva sotto la barra e i pulsanti restavano premibili a meta'. Ora e' protetto, con `top: false` perche' la `AppBar` copra gia' il bordo superiore.
+
+Scrivendo il test su uno schermo di 360 pixel di larghezza e' emerso che il titolo della `AppBar` non ci stava: 32 pixel di iconetta, 12 di distanza e il titolo a 22 punti finivano sopra il pulsante di connessione. Ora il titolo si accorcia con i puntini.
+
+Quattro `IconButton` senza `Tooltip`: chiudi e l'occhio della chiave. Un pulsante solo icona non dice niente a chi non lo conosce, e senza tooltip non e' nemmeno raggiungibile con il lettore di schermo. I `Semantics` veri restano da fare: sono un lavoro diverso e non li ho mescolati a questa rimozione.
+
 **6.5, il documento propose fix gia' applicati, e l'unico che mancava era a meta'.** `CRITICAL_FIXES.md` elencava quattro bug con il codice "attuale (BUGGY)" e i numeri di riga. Tre erano gia' risolti da tempo, quindi il file insegnava a intervenire su roba a posto. Il quarto, la validazione dell'indirizzo IP, esisteva ma controllava solo che ci fossero quattro parti: `999.999.999.999` e `abc.def.ghi.jkl` passavano, e l'app falliva solo al connettersi, con un errore che parlava di rete.
 
 Completata, e insieme a lei i tre campi di MyPlaylist che non avevano nessun controllo: IP, porta e secret key. Quest'ultimo e' il caso serio: l'etichetta prometteva 32 caratteri e non li controllava, e la chiave viene completata o troncata a 32 byte in silenzio, quindi un refuso produceva una chiave diversa e un errore di decifratura che non spiegava niente. Ora la validazione e' in `Validators`, con test su ogni caso incluso quello che nessuno scriverebbe a mano.
@@ -228,7 +234,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
 | 6.5 | `docs/CRITICAL_FIXES.md` eliminato: i quattro fix che proponeva sono nel codice, l'unico che mancava era completato adesso | | `docs/CRITICAL_FIXES.md` | Basso | ok | **fatto** |
 | 6.6 | `intl` è già dipendenza ma non c'è localizzazione: testo hardcoded IT, con qualche leak EN ("Kill all VLC instances") | tutto `lib/` | Basso | ok | da fare |
-| 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali | `control_panel.dart:112-118,189-196` | Basso | ok | da fare |
+| 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali (corpo protetto e 4 tooltip aggiunti; i `Semantics` restano da fare) | `control_panel.dart:112-118,189-196` | Basso | ok | **parziale** |
 | 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |
 
 ---

@@ -120,6 +120,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Chiudi',
                 ),
               ],
             ),
@@ -340,6 +341,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                                       () => _isPasswordVisible =
                                           !_isPasswordVisible,
                                     ),
+                                    tooltip: _isPasswordVisible
+                                        ? 'Nascondi la chiave'
+                                        : 'Mostra la chiave',
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),

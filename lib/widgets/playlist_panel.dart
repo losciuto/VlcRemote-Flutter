@@ -179,6 +179,7 @@ class PlaylistPanel extends StatelessWidget {
                             IconButton(
                               icon: const Icon(Icons.close),
                               onPressed: () => Navigator.pop(ctx),
+                              tooltip: 'Chiudi',
                             ),
                           ],
                         ),
