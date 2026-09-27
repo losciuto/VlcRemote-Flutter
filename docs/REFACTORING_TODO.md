@@ -146,9 +146,13 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.2 | Sospendere il polling in background (`WidgetsBindingObserver` assente in tutto `lib/`) | `vlc_provider.dart` | Alto | ok | **fatto** (3 test) |
 | 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart` | Medio | ok | **fatto** |
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
-| 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart:402-429` | Medio | ok | da fare |
+| 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart:45,114`, `my_playlist_service.dart:95` | Medio | ok | da fare |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+
+**4.5, il guadagno non c'era.** La ricostruzione del buffer a ogni giro e' stata eliminata (il marcatore di fine viene notato dal listener del socket, e il ciclo confronta solo orari e un booleano), ma la misura dice che **non serve a nulla alle dimensioni reali**: con 3000 voci `getPlaylist` richiede 1016ms, e 1021ms con il codice di prima. La differenza e' rumore.
+
+Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gira cinque o sei volte, non cinquanta: l'attesa di 5 s si usa solo se il server tace, e in quel caso il buffer e' quasi vuoto e copiarlo e' gratis. Il O(n²) descritto nell'item esiste solo nel caso patologico di una playlist molto grande che arriva a gocce per secondi, che non ho misurato. Severita' abbassata da Medio a Basso perche' il merito reale e' fare meno lavoro inutile, non velocizzare.
 
 **4.4, la cache va invalidata, non solo riempita.** `getConnections()` restituisce sempre una copia nuova: dieci call site e quasi tutti la modificano (`sort`, `removeWhere`, `add`), quindi restituire l'istanza in cache avrebbe fatto finire quelle modifiche dentro la cache e cambiato l'ordine con cui la lista viene riletta. La cache vale solo per cio' che e' stato scritto: se `setString` fallisce viene invalidata, e `clearAllConnections` la svuota.
 

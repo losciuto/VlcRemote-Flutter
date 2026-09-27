@@ -20,6 +20,13 @@ class VlcService {
       StreamController<String>.broadcast();
   final StringBuffer _incomingBuffer = StringBuffer();
   DateTime? _lastChunkTime;
+
+  /// Vero se nel flusso ricevuto e' comparso il marcatore di fine playlist.
+  ///
+  /// Il controllo lo fa il listener del socket, che vede i dati appena arrivati:
+  /// cosi' l'attesa in [_getPlaylist] non deve ricostruire il buffer a ogni
+  /// giro per cercarci dentro il marcatore.
+  bool _endMarkerSeen = false;
   final Duration _playlistQuietPeriod = Duration(milliseconds: 500);
 
   // VLC può spezzare una risposta su più chunk TCP. Consideriamo la risposta
@@ -74,6 +81,12 @@ class VlcService {
             // Append raw incoming data to internal buffer for commands that
             // need the entire multi-chunk response (eg. playlist)
             _incomingBuffer.write(response);
+
+            // Il marcatore di fine playlist viene notato qui, sul chunk: farlo
+            // in attesa richiederebbe di copiare il buffer a ogni giro.
+            if (response.contains('End of playlist')) {
+              _endMarkerSeen = true;
+            }
 
             // Debug: print a concise representation of the chunk with timestamp
             final display = response
@@ -468,44 +481,40 @@ class VlcService {
       // appended by the socket listener.
       _incomingBuffer.clear();
       _lastChunkTime = null;
+      _endMarkerSeen = false;
 
       _socket!.write('playlist\n');
       await _socket!.flush();
 
-      // Wait until buffer contains end marker or a quiet period after the
-      // last received chunk. This reduces races where chunks arrive shortly
-      // after we inspect the buffer.
+      // Attende la fine della risposta: marcatore esplicito, oppure silenzio
+      // dopo l'ultimo chunk. Questo riduce le gare in cui i chunk arrivano poco
+      // dopo che abbiamo guardato il buffer.
+      //
+      // Il ciclo confronta solo orari e un booleano, e non ricostruisce il
+      // buffer: farlo a ogni giro copiava l'intera playlist una volta al
+      // secondo per cinque secondi, sul main isolate, e con una playlist
+      // grande il costo cresceva con il quadrato della dimensione.
       final timeout = Duration(milliseconds: 5000);
       final start = DateTime.now();
       String responseText = '';
       while (DateTime.now().difference(start) < timeout) {
-        final buffer = _incomingBuffer.toString();
         final now = DateTime.now();
-        final hasEnd =
-            buffer.contains('+----[ End of playlist ]') ||
-            buffer.contains('End of playlist');
-
-        // If we have an explicit end marker and we've had no new chunks for
-        // the quiet period, consider the response complete.
-        if (hasEnd &&
+        final quiet =
             _lastChunkTime != null &&
-            now.difference(_lastChunkTime!) >= _playlistQuietPeriod) {
-          responseText = buffer;
-          break;
-        }
+            now.difference(_lastChunkTime!) >= _playlistQuietPeriod;
 
-        // If there has been no incoming data for a quiet period and buffer is
-        // not empty, assume the server finished sending.
-        if (_lastChunkTime != null &&
-            now.difference(_lastChunkTime!) >= _playlistQuietPeriod &&
-            buffer.isNotEmpty) {
-          responseText = buffer;
-          break;
-        }
+        // Marcatore di fine esplicito e silenzio: la risposta e' completa.
+        if (_endMarkerSeen && quiet) break;
 
-        // If no chunks have arrived yet, keep waiting up to timeout.
+        // Silenzio con buffer non vuoto: il server ha finito di inviare.
+        if (quiet && _incomingBuffer.isNotEmpty) break;
+
+        // Se non e' arrivato ancora nulla, si aspetta fino al timeout.
         await Future.delayed(Duration(milliseconds: 100));
       }
+
+      // Il buffer viene materializzato una volta sola, alla fine.
+      responseText = _incomingBuffer.toString();
 
       print('[VlcService] RAW_BUFFER_LEN: ${_incomingBuffer.length}');
       print(
