@@ -61,7 +61,14 @@ Un'applicazione Flutter cross-platform per controllare VLC Media Player da remot
 - ✅ Linux
 - ✅ Windows
 - ✅ macOS
-- ✅ Web
+
+La build web **non e' supportata** e non e' mai stata supportata: l'app parla
+con VLC e con MyPlaylist su socket TCP greffe, e il browser non ne ha. Farla
+funzionare richiederebbe riscrivere il lato server di MyPlaylist su WebSocket,
+cambiare il protocollo e di conseguenza invalidare i client gia' installati:
+non e' un lavoro che si puo' fare dal lato di questa app. La cartella `web/`
+resta nel repository perche' la genera `flutter create` e non fa danno, ma
+`flutter build web` non produce niente di utilizzabile.
 
 ---
 
@@ -104,9 +111,12 @@ flutter run -d linux
 # Windows
 flutter run -d windows
 
-# Web
-flutter run -d chrome
+# macOS
+flutter run -d macos
 ```
+
+Non c'e' `flutter run -d chrome`: il web non e' supportato, e il perche' e'
+scritto nella sezione sul cross-platform qui sopra.
 
 ---
 
