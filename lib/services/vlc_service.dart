@@ -411,16 +411,39 @@ class VlcService {
     // Nota: getTitle, getTime, etc. usano già sendCommandAndRead che è sincronizzato.
     // Invocandoli in sequenza qui, garantiamo che ogni risposta sia quella giusta.
 
-    final title = await getTitle();
+    // 'status' va per primo, e non per il suo contenuto: perche' è l'unico dei
+    // cinque comandi che risponde sempre con qualcosa.
+    //
+    // Con niente in riproduzione VLC risponde a `get_title` con una riga
+    // vuota, cioè con niente: eco del comando, a capo, prompt. Il filtro che
+    // scarta l'eco e il promptbutta via anche la riga vuota, quindi la
+    // risposta non arm mai il timer di silenzio e il comando va in timeout
+    // su un VLC perfettamente vivo. Un comando che risponde "niente" e
+    // indistinguibile da un comando senza risposta non può fare da sonda.
+    //
+    // 'status' invece restituisce sempre il blocco di `( chiave: valore )`,
+    // time e length a zero compresi, quindi o arriva o la socket non
+    // consegna. Ed è la sonda più economica possibile: se scade, gli altri
+    // quattro userebbero la stessa socket e l'errore sarebbe identico, ma
+    // l'attesa passerebbe da cinque timeout a uno.
+    final statusResp = await sendCommandAndRead('status');
+    if (statusResp == null) {
+      AppLogger.w(
+        _tag,
+        'Nessuna risposta a status: la socket non consegna piu\'\'',
+      );
+      throw VlcTimeoutException(
+        Duration(milliseconds: AppConstants.commandTimeoutMs),
+        'nessuna risposta da VLC',
+      );
+    }
 
-    // Fallback robusto per il tempo: proviamo prima 'status', poi 'get_time'
     int? time;
     int? length;
     int? rawVolume;
     String? parsedState;
 
-    final statusResp = await sendCommandAndRead('status');
-    if (statusResp != null) {
+    {
       final itemRegex = RegExp(r'\( ([^:]+): (.*?) \)');
       for (final match in itemRegex.allMatches(statusResp)) {
         final key = match.group(1)?.trim();
@@ -434,20 +457,14 @@ class VlcService {
       }
     }
 
+    final title = await getTitle();
+
     // Se mancano dati critici, usiamo i comandi diretti (più affidabili in alcune build di VLC)
     if (time == null || time == 0) {
       time = await getTime();
     }
     length ??= await getLength();
     rawVolume ??= await _getVolumeRaw();
-
-    // VLC non ha risposto a nessun comando: il collegamento non è più valido.
-    if (title == null && time == null && length == null && rawVolume == null) {
-      throw VlcTimeoutException(
-        Duration(milliseconds: AppConstants.commandTimeoutMs),
-        'nessuna risposta da VLC',
-      );
-    }
 
     int? volumePercent;
     if (rawVolume != null) {
@@ -470,6 +487,9 @@ class VlcService {
         : (time ?? 0) > 0;
 
     return VlcStatus(
+      // `title` puo' essere null anche quando `status` e' andato a buon
+      // fine: e' il caso di niente in riproduzione, dove la risposta vuota
+      // viene scartata come se fosse silenzio e il comando scade.
       nowPlaying: (title == null || title.isEmpty)
           ? 'Nessun video in riproduzione'
           : title,

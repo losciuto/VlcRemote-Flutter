@@ -206,6 +206,95 @@ void main() {
     });
 
     test(
+      'getStatus con la socket muta spara un comando solo, non cinque',
+      () async {
+        // Con VLC collegato ma morto, `getStatus` mandava cinque comandi in
+        // sequenza, ciascuno con un timeout da 1,5 secondi, e il provider ne
+        // ritenta tre volte: 22 secondi e mezzo per accorgersi che il
+        // telecomando non risponde piu'.
+        //
+        // Ora il primo comando e' `status`, che su una socket viva risponde
+        // sempre: se non risponde, la socket non consegna, e gli altri quattro
+        // avrebbero usato la stessa socket per un errore identico.
+        //
+        // Il conteggio dei comandi ricevuti e' la prova, non il tempo: qui il
+        // timeout e' troppo corto per misurare 22 secondi in un test.
+        await startServer((command) => []); // il server non risponde a nulla
+
+        await expectLater(
+          service.getStatus(),
+          throwsA(isA<VlcTimeoutException>()),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        expect(
+          server.receivedCommands,
+          ['status'],
+          reason:
+              'la socket non consegna: gli altri quattro avrebbero '
+              'speso altri sei secondi per lo stesso errore',
+        );
+      },
+    );
+
+    test(
+      'getStatus con niente in riproduzione non lo scambia con una socket morta',
+      () async {
+        // Il caso da non rompere, ed e' la ragione per cui la sonda e'
+        // `status` e non `get_title`.
+        //
+        // Con niente in riproduzione VLC risponde a `get_title` con una riga
+        // vuota, e il filtro che scarta l'eco e il prompt butta via anche
+        // quella: la risposta non arma il timer di silenzio e il comando va
+        // in timeout su un VLC perfettamente vivo. Se la sonda fosse stata
+        // `get_title`, questo stato sembrerebbe quello di un collegamento
+        // perso, e l'app chiuderebbe la connessione a chi sta solo guardando
+        // la schermata di attesa.
+        //
+        // Qui il server dice `status` con time 0 e length 0, che e' esattamente
+        // quello che risponde VLC a macchina ferma, e `get_title` tace.
+        await startServer((command) {
+          if (command == 'status') {
+            return ['( state: stopped )', '( time: 0 )', '( length: 0 )'];
+          }
+          if (command == 'get_time') return ['0'];
+          return [];
+        });
+
+        final status = await service.getStatus();
+
+        expect(status, isNotNull);
+        expect(status!.nowPlaying, 'Nessun video in riproduzione');
+        expect(status.isPlaying, isFalse);
+        expect(status.currentTime, 0);
+        expect(server.receivedCommands, contains('status'));
+      },
+    );
+
+    test(
+      'getStatus usa ancora i comandi singoli per quello che status non dice',
+      () async {
+        // `status` non riporta il titolo, e in alcune build non riporta il
+        // volume: quando mancano, vanno cercati nei comandi dedicati. La
+        // sonda sta all'inizio, non al posto dei fallback.
+        await startServer((command) {
+          if (command == 'status') return ['( state: playing )'];
+          if (command == 'get_title') return ['Un film'];
+          if (command == 'get_time') return ['42'];
+          if (command == 'get_length') return ['300'];
+          return [];
+        });
+
+        final status = await service.getStatus();
+
+        expect(status!.nowPlaying, 'Un film');
+        expect(status.currentTime, 42);
+        expect(status.totalTime, 300);
+        expect(status.isPlaying, isTrue);
+      },
+    );
+
+    test(
       'getPlaylist senza connessione lancia, non restituisce lista vuota',
       () async {
         service = VlcService();
