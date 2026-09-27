@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../providers/vlc_provider.dart';
 import '../widgets/connection_dialog.dart';
@@ -8,7 +9,6 @@ import '../widgets/playlist_panel.dart';
 import '../widgets/my_playlist_panel.dart';
 import '../widgets/update_dialog.dart';
 import '../services/update_service.dart';
-import '../config/app_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -476,9 +476,20 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Versione ${AppConfig.appVersion}',
-              style: TextStyle(color: Colors.grey[600]),
+            // La versione arriva da pubspec.yaml, non da una costante nel
+            // codice: era la prima cosa che smetteva di corrispondere, e il
+            // controllo degli aggiornamenti ne legge gia' una copia.
+            FutureBuilder<PackageInfo>(
+              future: PackageInfo.fromPlatform(),
+              builder: (context, snapshot) {
+                final versione = snapshot.data?.version;
+                return Text(
+                  versione == null
+                      ? 'Versione sconosciuta'
+                      : 'Versione $versione',
+                  style: TextStyle(color: Colors.grey[600]),
+                );
+              },
             ),
             const SizedBox(height: 16),
             const Text(

@@ -93,7 +93,7 @@ Copertura per file, misurata il 27/09/2026 con un `lcov.info` pulito. Serve a di
 
 | Coperto bene | % | Da colmare | % |
 |---|---|---|---|
-| `filter_settings` | 100.0 | `app_config` | 0.0 |
+| `filter_settings` | 100.0 | ~~`app_config`~~ | rimosso |
 | `secure_storage_service` | 96.2 | `my_playlist_panel` | 0.3 |
 | `vlc_connection` | 93.7 | `connection_dialog` | 0.4 |
 | `main` | 91.3 | `playlist_panel` | 0.7 |
@@ -149,6 +149,10 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
+
+**5.9, la versione dell'app era in due posti, e quello sbagliato era quello che si leggeva.** `AppConfig` serviva per una cosa sola: mostrare la versione nel dialogo delle informazioni. Tutto il resto del file erano quaranta righe di costanti mai usate, e la versione era scritta a mano mentre `pubspec.yaml` era gia' su 2.7.5: l'info diceva 2.7.4, quindi l'utente vedeva una versione che non era la sua.
+
+Eliminato il file. La versione ora arriva da `pubspec.yaml` con `package_info_plus`, che e' gia' una dipendenza e che il controllo degli aggiornamenti stava gia' leggendo: due letture dello stesso valore che non possono divergere. Il file era anche l'unica cosa che la tabella della copertura indicasse come "da colmare", e non esiste piu'.
 
 **5.8, non era un timeout troppo corto: era una risposta che veniva buttata.** Il client attendeva `onDone`, cioe' la chiusura della socket, e la risposta non e' arrivata finche' il server non chiudeva. Il server vero chiude sempre, quindi la cosa sembrava non succedere mai. Con un server che non chiude, pero', un messaggio gia' arrivato e valido veniva scartato e tornava un errore dopo **10 secondi**.
 
@@ -230,7 +234,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 5.6 | Rimuovere `dart:io` dal provider e dai servizi, o dichiarare la build web non supportata | il provider e' pulito; restano i servizi che parlano davvero via socket e file | | `vlc_provider.dart:2`, `vlc_service.dart:2`, `my_playlist_service.dart:2` | Medio | **⚠️** tocca le scelte di piattaforma, non il protocollo | **parziale** |
 | 5.7 | Tipizzare `dynamic item` nel widget playlist | `playlist_panel.dart:123` | Basso | ok | **fatto** |
 | 5.8 | Estendere il timeout di attesa risposta, o fare in modo che il server chiuda sempre (fatto lato client: la risposta non dipende piu' dalla chiusura) | `my_playlist_service.dart:81-93` | Medio | **⚠️** comportamento server | **fatto** |
-| 5.9 | Allineare `AppConfig` con la realtà (dichiara porta 4242, la UI usa 8000/8080) | `app_config.dart:13-15,44-45` | Basso | ok | **parziale**: i default delle porte ora vivono in `AppConstants`; `AppConfig.defaultVlcPort = 4242` resta sbagliato e inutilizzato |
+| 5.9 | Allineare `AppConfig` con la realtà (fatto: il file e' stato eliminato) | `home_screen.dart` | Basso | ok | **fatto** |
 
 ### Fase 5 — Igiene, log, documentazione
 
