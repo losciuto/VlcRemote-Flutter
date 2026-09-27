@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../exceptions/vlc_exceptions.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
+import '../utils/app_logger.dart';
 
 /// Servizio per comunicare con VLC tramite interfaccia RC (Remote Control) via socket TCP
 ///
@@ -27,6 +28,10 @@ class VlcService {
   /// cosi' l'attesa in [_getPlaylist] non deve ricostruire il buffer a ogni
   /// giro per cercarci dentro il marcatore.
   bool _endMarkerSeen = false;
+
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'VlcService';
+
   final Duration _playlistQuietPeriod = Duration(milliseconds: 500);
 
   // VLC può spezzare una risposta su più chunk TCP. Consideriamo la risposta
@@ -88,36 +93,45 @@ class VlcService {
               _endMarkerSeen = true;
             }
 
-            // Debug: print a concise representation of the chunk with timestamp
-            final display = response
-                .replaceAll('\r', '<CR>')
-                .replaceAll('\n', '<LF>')
-                .replaceAll('\t', '<TAB>');
-            print(
-              '[VlcService] [${now.toIso8601String()}] Chunk(${data.length} bytes): $display',
-            );
+            // Traccia del chunk, a scopo diagnostico.
+            //
+            // Questo e' un percorso caldo: il listener scrive a ogni chunk
+            // ricevuto, e la trasformazione del testo qui sotto (tre replaceAll
+            // sul contenuto) costa piu' della lettura dal socket. Per questo
+            // sta dietro a un controllo esplicito: con il solo controllo interno
+            // al logger la stringa verrebbe comunque costruita a ogni chunk.
+            if (AppLogger.isDebugEnabled) {
+              final display = response
+                  .replaceAll('\r', '<CR>')
+                  .replaceAll('\n', '<LF>')
+                  .replaceAll('\t', '<TAB>');
+              AppLogger.d(
+                _tag,
+                '[${now.toIso8601String()}] Chunk(${data.length} bytes): $display',
+              );
+            }
 
             final trimmed = response.trim();
             if (trimmed.isNotEmpty) {
               _responseController.add(response);
             }
           } catch (e) {
-            print('[VlcService] Errore decodifica dati socket: $e');
+            AppLogger.w(_tag, 'Errore decodifica dati socket', e);
           }
         },
         onError: (error) {
-          print('Errore socket: $error');
+          AppLogger.w(_tag, 'Errore socket', error);
           _isConnected = false;
         },
         onDone: () {
-          print('Connessione chiusa');
+          AppLogger.i(_tag, 'Connessione chiusa');
           _isConnected = false;
         },
       );
 
       return true;
     } catch (e) {
-      print('Errore connessione a VLC: $e');
+      AppLogger.w(_tag, 'Errore connessione a VLC', e);
       _isConnected = false;
       return false;
     }
@@ -133,8 +147,10 @@ class VlcService {
         try {
           await _socketSubscription!.cancel();
         } catch (e) {
-          print(
-            '[VlcService] Errore durante la cancellazione della sottoscrizione: $e',
+          AppLogger.w(
+            _tag,
+            'Errore durante la cancellazione della sottoscrizione',
+            e,
           );
         }
         _socketSubscription = null;
@@ -146,16 +162,16 @@ class VlcService {
           // destroy() è più aggressivo di close() e assicura la chiusura immediata
           _socket!.destroy();
         } catch (e) {
-          print('[VlcService] Errore durante la distruzione del socket: $e');
+          AppLogger.w(_tag, 'Errore durante la distruzione del socket', e);
         }
         _socket = null;
       }
 
       _currentHost = null;
       _currentPort = null;
-      print('[VlcService] Disconnesso con successo.');
+      AppLogger.i(_tag, 'Disconnesso con successo.');
     } catch (e) {
-      print('[VlcService] Errore critico durante la disconnessione: $e');
+      AppLogger.w(_tag, 'Errore critico durante la disconnessione', e);
     }
   }
 
@@ -163,7 +179,7 @@ class VlcService {
   Future<bool> sendCommand(String command) async {
     return _enqueueCommand(() async {
       if (!_isConnected || _socket == null) {
-        print('Non connesso a VLC');
+        AppLogger.i(_tag, 'Non connesso a VLC');
         return false;
       }
 
@@ -172,7 +188,7 @@ class VlcService {
         await _socket!.flush();
         return true;
       } catch (e) {
-        print('Errore invio comando: $e');
+        AppLogger.w(_tag, 'Errore invio comando', e);
         return false;
       }
     });
@@ -192,7 +208,7 @@ class VlcService {
       try {
         await previous;
       } catch (e) {
-        print('[VlcService] Comando in coda terminato con errore: $e');
+        AppLogger.w(_tag, 'Comando in coda terminato con errore', e);
       }
     }
 
@@ -281,14 +297,14 @@ class VlcService {
         final result = await completer.future.timeout(
           Duration(milliseconds: timeoutMs),
           onTimeout: () {
-            print('[VlcService] Timeout per comando: $command');
+            AppLogger.w(_tag, 'Timeout per comando: $command');
             return null;
           },
         );
 
         return result == null ? null : _stripCommandEcho(result, command);
       } catch (e) {
-        print('Errore durante sendCommandAndRead ($command): $e');
+        AppLogger.w(_tag, 'Errore durante sendCommandAndRead ($command)', e);
         return null;
       } finally {
         quietTimer?.cancel();
@@ -516,13 +532,17 @@ class VlcService {
       // Il buffer viene materializzato una volta sola, alla fine.
       responseText = _incomingBuffer.toString();
 
-      print('[VlcService] RAW_BUFFER_LEN: ${_incomingBuffer.length}');
-      print(
-        '[VlcService] RAW: ${responseText.isEmpty ? _incomingBuffer.toString() : responseText}',
+      AppLogger.d(_tag, 'RAW_BUFFER_LEN: ${_incomingBuffer.length}');
+      AppLogger.d(
+        _tag,
+        'RAW: ${responseText.isEmpty ? _incomingBuffer.toString() : responseText}',
       );
 
       // Splitta per newline
       final lines = responseText.split('\n');
+
+      // ID gia' presi nella playlist, per scartare i duplicati.
+      final seenIds = <int>{};
 
       int index = 0;
       for (final line in lines) {
@@ -602,10 +622,11 @@ class VlcService {
         title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
 
         // Aggiungi solo se ha un ID valido e non è vuoto
-        if (vlcId != null &&
-            title.isNotEmpty &&
-            !playlistItems.any((item) => item.id == vlcId)) {
-          // Usa ID per unicità
+        if (vlcId != null && title.isNotEmpty && !seenIds.contains(vlcId)) {
+          // L'unicita' e' per ID: `_seenIds` risponde in tempo costante, mentre
+          // un `any` sulla lista rileggerebbe tutti gli elementi gia' raccolti
+          // a ogni riga, e il costo cresceva con il quadrato della dimensione.
+          seenIds.add(vlcId);
 
           playlistItems.add(
             PlaylistItem(
@@ -616,19 +637,23 @@ class VlcService {
               isPlaying: isPlaying,
             ),
           );
-          print('[VlcService] Item[$index] ID:$vlcId Title:$title');
+          // Una riga per voce: su una playlist grande il costo di queste
+          // righe supera di gran lunga il lavoro di lettura che le genera.
+          if (AppLogger.isDebugEnabled) {
+            AppLogger.d(_tag, 'Item[$index] ID:$vlcId Title:$title');
+          }
           index++;
         }
       }
 
-      print('[VlcService] Playlist: ${playlistItems.length} items');
+      AppLogger.i(_tag, 'Playlist: ${playlistItems.length} items');
       return playlistItems;
     } on VlcRemoteException {
       // Le eccezioni tipizzate servono a distinguere 'collegamento perso' da
       // 'playlist vuota': le propaghiamo invece di trasformarle in [].
       rethrow;
     } catch (e) {
-      print('[VlcService] Errore getPlaylist: $e');
+      AppLogger.w(_tag, 'Errore getPlaylist', e);
       return [];
     }
   }

@@ -147,8 +147,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart` | Medio | ok | **fatto** |
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
-| 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart:45,114`, `my_playlist_service.dart:95` | Medio | ok | da fare |
+| 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+
+**4.6 e' caduta perche' il problema non era dove sembrava.** Spostare il parsing fuori dal main isolate e' stato scartato dopo aver misurato il costo reale della lettura di una playlist: togliendo i `print`, che erano l'unica parte del lavoro che cresceva con i dati, il tempo e' diventato **575 ms a 1000 voci, 576 ms a 3000, 582 ms a 6000**. Praticamente piatto. Il parsing in se' non blocca il main isolate: il lavoro vero era stampare.
+
+Restare con un `compute()` avrebbe spostato in un altro isolate circa trenta millisecondi, al costo di un isolate da avviare, della stringa da copiare due volte e del risultato da rimandare indietro. Il guadagno era reale solo per playlist enormi, e a quel punto il costo e' tornerebbe con la copia.
 
 **4.5, il guadagno non c'era.** La ricostruzione del buffer a ogni giro e' stata eliminata (il marcatore di fine viene notato dal listener del socket, e il ciclo confronta solo orari e un booleano), ma la misura dice che **non serve a nulla alle dimensioni reali**: con 3000 voci `getPlaylist` richiede 1016ms, e 1021ms con il codice di prima. La differenza e' rumore.
 
