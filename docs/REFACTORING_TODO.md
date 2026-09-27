@@ -150,6 +150,10 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**5.1, estratti entrambi i dialogi rimasti.** Il pannello era di 865 righe con tre dialogi scritti dentro: filtro, anteprima e conferma. Il filtro e' finito in `smart_filter_dialog.dart` quando ne ho eliminato la fuga di controller, e l'anteprima in `playlist_preview_dialog.dart`. Il pannello e' a 364 righe.
+
+Estratto non e' spostato: l'anteprima ha 277 righe proprie e ha un richiamo `onPlay` al posto della chiamata al provider, cosi' chi la mostra decide cosa significa "riproduci". Prima non aveva nessun test, e ne ha sei: conta le voci, le elenca, chiama il richiamo e chiude, non mostra "Riproduci Ora" con la lista vuota, costruisce la copertina sull'host indicato e non la costruisce affatto se l'host manca.
+
 **6.6, i leak in inglese erano quasi tutti su azioni distruttive.** Il peggiore era il dialogo di conferza per chiudere tutte le istanze di VLC sul PC remoto: titolo, testo e pulsanti in inglese, mentre il pulsante che lo apre diceva in italiano "Killa tutte le istanze VLC". Su un'azione che interrompe la riproduzione dal lontano, un utente che non legge l'inglese poteva confermare per abitudine. Ora e' tutto italiano e coerente col proprio pulsante.
 
 Coi testi "Fullscreen", "Smart Playlist Filter" e "Reset" nello stesso dialogo di filtro, accanto ad "Annulla". "Smart Actions" l'ho lasciato: e' un nome di funzionalita' e compare uguale in due punti, quindi e' una scelta e non una dimenticanza.
@@ -232,7 +236,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 5.1 | Scomporre `my_playlist_panel.dart`: il dialogo dei filtri e' gia' stato estratto (865 -> 599 righe), restano i dialog di anteprima e di conferma | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **parziale** |
+| 5.1 | Scomporre `my_playlist_panel.dart` (865 righe, tre dialog enormi inline) fatto: il pannello e' a 364, dialoghi in file separati | `my_playlist_panel.dart`, `smart_filter_dialog.dart`, `playlist_preview_dialog.dart` | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **fatto** |
 | 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | **parziale** (dispose dei campi) |
 | 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
