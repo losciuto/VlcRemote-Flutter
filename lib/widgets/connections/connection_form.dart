@@ -134,7 +134,7 @@ class _ConnectionFormState extends State<ConnectionForm> {
                   child: TextFormField(
                     controller: widget.myPlaylistSecretKeyController,
                     decoration: _decorazione(
-                      label: 'Secret Key (32 char)',
+                      label: 'Secret Key (max 32 char)',
                       prefixIcon: const Icon(Icons.key),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -151,14 +151,18 @@ class _ConnectionFormState extends State<ConnectionForm> {
                       ),
                     ),
                     obscureText: !_isSecretKeyVisible,
-                    // La lunghezza si controlla perche' la chiave viene
-                    // completata o troncata a 32 byte in silenzio: un refuso
-                    // produce una chiave diversa e un errore di decifratura
-                    // che non spiega niente.
+                    // La chiave viene completata con zeri fino a 32 byte, e
+                    // MyPlaylist fa esattamente la stessa cosa: una chiave piu'
+                    // corta di 32 caratteri funziona, e su questo campo non
+                    // c'e' nemmeno un vincolo di lunghezza. Si blocca solo
+                    // oltre i 32 caratteri, perche' li si perderebbero in
+                    // silenzio: un refuso sul bordo destro produrrebbe una
+                    // chiave diversa da quella pensata, con un errore di
+                    // decifratura che non spiega niente.
                     validator: (value) {
                       if (value == null || value.isEmpty) return null;
-                      if (value.length != 32) {
-                        return 'La chiave deve avere 32 caratteri';
+                      if (value.length > 32) {
+                        return 'La chiave non puo\' superare 32 caratteri';
                       }
                       return null;
                     },

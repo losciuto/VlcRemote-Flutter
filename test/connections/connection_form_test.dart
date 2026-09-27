@@ -195,23 +195,42 @@ void main() {
   });
 
   group('secret key', () {
-    testWidgets('una chiave di lunghezza sbagliata viene rifiutata', (
+    testWidgets('una chiave oltre i 32 caratteri viene rifiutata', (
       tester,
     ) async {
-      // La chiave viene completata o troncata a 32 byte in silenzio: un refuso
-      // produrrebbe una chiave diversa e un errore di decifratura che non
-      // spiega niente.
+      // Oltre i 32 caratteri i byte in eccesso verrebbero persi in
+      // silenzio nel troncamento a 32, producendo una chiave diversa da
+      // quella pensata e un errore di decifratura che non spiega niente.
       await apri(tester);
       modulo.nome.text = 'Casa';
       modulo.ip.text = '192.168.1.15';
       modulo.porta.text = '8080';
-      modulo.mpChiave.text = 'troppo_corta';
+      modulo.mpChiave.text = 'a' * 33;
 
       await tester.tap(find.text('Salva e Connetti'));
       await tester.pumpAndSettle();
 
-      expect(find.text('La chiave deve avere 32 caratteri'), findsOneWidget);
+      expect(
+        find.text('La chiave non puo\' superare 32 caratteri'),
+        findsOneWidget,
+      );
       expect(modulo.salvato, isFalse);
+    });
+
+    testWidgets('una chiave piu\' corta di 32 caratteri passa', (tester) async {
+      // Sotto i 32 caratteri la chiave viene completata con zeri, e
+      // MyPlaylist fa lo stesso: i due lati restano d'accordo, quindi non
+      // c'e' motivo di rifiutarla.
+      await apri(tester);
+      modulo.nome.text = 'Casa';
+      modulo.ip.text = '192.168.1.15';
+      modulo.porta.text = '8080';
+      modulo.mpChiave.text = 'chiave_corta';
+
+      await tester.tap(find.text('Salva e Connetti'));
+      await tester.pumpAndSettle();
+
+      expect(modulo.salvato, isTrue);
     });
 
     testWidgets('una chiave di 32 caratteri passa', (tester) async {
