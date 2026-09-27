@@ -4,10 +4,9 @@
 > Progetto: `VlcRemote` (client) · Server: `MyPlaylist` (`lib/services/remote_control_service.dart`)
 > Vincolo: ogni modifica deve restare **compatibile con il server MyPlaylist** (v3.14.1).
 >
-> **Dove siamo.** Tutte le fasi sono chiuse. Delle tre voci che erano
-> aperte, **D4, D10 e 1.0 sono chiuse**: in 1.0 il token e' uscito dal
-> progetto e resta solo la revoca di quello vecchio, che e' un clic su
-> github.com e non blocca piu' nessuno.
+> **Dove siamo.** Tutte le fasi sono chiuse e non c'e' piu' nessuna voce in
+> attesa: **D4, D10 e 1.0** hanno tutte una risposta, e 1.0 e' chiusa per
+> intero, revoca compresa e verificata.
 > Il lavoro aperto rimasto e' debito di copertura, non difetti: la tabella
 > sotto dice dove.
 >
@@ -50,7 +49,7 @@ Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che t
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | **fatto**: il token e' uscito dal progetto, resta da revocare quello vecchio |
+| 1.0 | Ruotare il token GitHub esposto nel `git remote` di MyPlaylist | `.git/config` di MyPlaylist | Bloccante | ok | **fatto** (chiuso: token fuori dal progetto e revocato) |
 | 1.1 | Spostare `vlcPassword` e `myPlaylistSecretKey` da SharedPreferences a storage sicuro | `lib/services/secure_storage_service.dart`, `connection_service.dart` | Bloccante | ok | **fatto** |
 | 1.2 | Firmare la release con chiave di produzione invece che `debug` | `android/app/build.gradle.kts` | Bloccante | ok | **fatto** |
 | 1.3 | Verificare l'APK scaricato (SHA-256) prima di installarlo | `lib/services/update_service.dart` | Bloccante | ok | **fatto** |
@@ -187,9 +186,9 @@ La prima strada pensata era SSH, e si è rivelata impraticabile: su questa macch
 
 Quello che è rimasto è `gh`, che era già installato. `gh auth login` chiede un codice monouso nel browser e produce un token nuovo con gli scope giusti (`gist`, `read:org`, `repo`); `gh auth setup-git` fa rispondere git a chi lo chiama al momento del bisogno. Il token finisce nel **keyring di sistema**: non è in un file della cartella progetto, non è in `~/.netrc`, ed è in un posto che `gh` sa ruotare da solo.
 
-Il remote di MyPlaylist ora è `https://github.com/losciuto/MyPlaylist.git`, identico a quello di VlcRemote, e `git config` non contiene più nessuna credenziale. Verificato con un `push --dry-run` su entrambi i repository, che è la prova che conta: i 42 commit sono ancora lì e il percorso di push funziona per entrambi.
+Il remote di MyPlaylist ora è `https://github.com/losciuto/MyPlaylist.git`, identico a quello di VlcRemote, e `git config` non contiene più nessuna credenziale. Verificato con un `push --dry-run` su entrambi i repository, che è la prova che conta: i commit sono ancora lì e il percorso di push funziona per entrambi.
 
-Resta un passo solo, e non blocca niente: ** revocare il vecchio `ghp_` su github.com**. Fino a quel momento quel token resta valido, e la finitura non lo chiude da sola.
+Chiuso il 27/09/2026: il vecchio `ghp_` è stato revocato. Verificato contro l'API di GitHub invece di darlo per scontato — il token vecchio risponde `401 Bad credentials`, mentre `push --dry-run` su entrambi i repository passa con il token nuovo. La revoca non è stata creduta sulla parola, è stata misurata dopo aver già cambiato il percorso di push.
 
 **3.14, la sonda esisteva già e non era dove sembrava.** Con VLC collegato ma morto, `getStatus` mandava cinque comandi in sequenza, ognuno con un timeout da 1,5 secondi, e il provider ne ritenta tre: 22 secondi e mezzo. La correzione non è accorciare i timeout — cambierebbe il comportamento su una rete lenta, che è il caso normale di un telecomando di casa — né aggiungere una sonda TCP davanti, che ripeterebbe un'informazione ottenibile gratis.
 
