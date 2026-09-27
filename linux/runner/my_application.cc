@@ -14,9 +14,38 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+// Imposta l'icona della finestra dagli asset dell'applicazione.
+//
+// Si legge dal disco e non dal bundle di risorse: su Linux gli asset stanno
+// in `data/flutter_assets` accanto all'eseguibile e non sono registrati come
+// GResource, quindi un percorso tipo
+// `/data/flutter_assets/assets/icon/icon.png` non esiste e l'icona non
+// verrebbe mai impostata, senza alcun errore in segno.
+//
+// Va chiamata una seconda volta quando la finestra e' gia' stata realizzata:
+// prima che la finestra esista GTK conserva l'icona ma non la pubblica come
+// `_NET_WM_ICON`, e la barra delle applicazioni mostra l'icona generica
+// dei programmi, che e' il segnale classico di un'applicazione senza icona.
+static void set_window_icon(GtkWindow* window) {
+  g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe_path == nullptr) return;
+
+  g_autofree gchar* icon_path = g_build_filename(
+      exe_path, "data", "flutter_assets", "assets", "icon", "icon.png",
+      nullptr);
+  g_autoptr(GdkPixbuf) icon = gdk_pixbuf_new_from_file(icon_path, nullptr);
+  if (icon != nullptr) {
+    gtk_window_set_icon(window, icon);
+  }
+}
+
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
-  gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+  GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(view));
+  if (GTK_IS_WINDOW(window)) {
+    set_window_icon(GTK_WINDOW(window));
+  }
+  gtk_widget_show(window);
 }
 
 // Implements GApplication::activate.
@@ -51,6 +80,10 @@ static void my_application_activate(GApplication* application) {
   } else {
     gtk_window_set_title(window, "vlc_remote_flutter");
   }
+
+  // Icona della finestra: vedi set_window_icon, richiamata anche quando la
+  // finestra sara' stata realizzata.
+  set_window_icon(window);
 
   gtk_window_set_default_size(window, 1280, 720);
 
