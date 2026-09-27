@@ -21,11 +21,33 @@ import '../services/settings_service.dart';
 /// interrogare VLC e a ricostruire la UI mentre l'utente e' su un'altra app,
 /// consumando batteria e traffico di rete per niente.
 class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
-  final VlcService _vlcService = VlcService();
-  final VlcHttpService _vlcHttpService = VlcHttpService();
-  final ConnectionService _connectionService = ConnectionService();
-  final MyPlaylistService _myPlaylistService = MyPlaylistService();
-  final SettingsService _settingsService = SettingsService();
+  /// I servizi sono iniettabili perché il provider, senza, non è testabile
+  /// quando è connesso: crea da sé le proprie dipendenze e non accetta un
+  /// socket finto, quindi un test che volesse provare il polling o la
+  /// riconnessione restava bloccato.
+  ///
+  /// I default sono gli stessi di prima: l'iniezione non cambia il
+  /// comportamento, cambia solo chi decide cosa costruire.
+  VlcProvider({
+    VlcService? vlcService,
+    VlcHttpService? vlcHttpService,
+    ConnectionService? connectionService,
+    MyPlaylistService? myPlaylistService,
+    SettingsService? settingsService,
+  }) : _vlcService = vlcService ?? VlcService(),
+       _vlcHttpService = vlcHttpService ?? VlcHttpService(),
+       _connectionService = connectionService ?? ConnectionService(),
+       _myPlaylistService = myPlaylistService ?? MyPlaylistService(),
+       _settingsService = settingsService ?? SettingsService() {
+    WidgetsBinding.instance.addObserver(this);
+    _init();
+  }
+
+  final VlcService _vlcService;
+  final VlcHttpService _vlcHttpService;
+  final ConnectionService _connectionService;
+  final MyPlaylistService _myPlaylistService;
+  final SettingsService _settingsService;
 
   VlcConnection? _currentConnection;
   VlcStatus _status = VlcStatus();
@@ -89,11 +111,6 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     final uri = _vlcHttpService.artworkUri(itemId);
     if (uri == null) return null;
     return (url: uri.toString(), headers: _vlcHttpService.authHeaders());
-  }
-
-  VlcProvider() {
-    WidgetsBinding.instance.addObserver(this);
-    _init();
   }
 
   /// Sospende o riprende il polling a seconda di dove si trova l'app.
