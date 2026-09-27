@@ -51,7 +51,7 @@ Regole emerse dal codice di `remote_control_service.dart`. Ogni item sotto che t
 | 1.8 | Smettere di eseguire `pkill -f vlc` in locale quando il server è remoto | `lib/providers/vlc_provider.dart` | Alto | ok | **fatto** |
 | 1.9 | Validare/incapsulare gli URL costruiti con dati del server (`Uri.encodeComponent`, allowlist di host) | `vlc_http_service.artworkUri`, `my_playlist_service.posterUri` | Alto | ok | **fatto** |
 | 1.10 | **Seguito di 1.1**: `SecureStorageService.write`/`delete` ingoiano l'errore con `print` e restituiscono `void`, quindi `ConnectionService` non sa se il segreto e' stato salvato | `secure_storage_service.dart`, `connection_service.dart` | Alto | ok | **fatto** |
-| 1.11 | Lavoro a meta' in MyPlaylist: `update_service.dart` (nuovo, 112 righe) piu' modifiche a `github_service.dart` e `update_dialog.dart` sono **fuori da ogni commit**, e finora non erano tracciati da nessun item | working tree di MyPlaylist | Alto | ok | da fare |
+| 1.11 | Lavoro a meta' in MyPlaylist: `update_service.dart` (nuovo) piu' modifiche a `github_service.dart` e `update_dialog.dart` erano **fuori da ogni commit** e non compilavano (9 errori) | MyPlaylist | Alto | ok | **fatto** (2 commit) |
 
 **Risolto — 1.7 (KDF), scelta A.** Le alternative che ci sono state:
 - **(A) Compatibilità totale** ✅ scelta: non si tocca la derivazione. Mitigazione solo lato client (allungare la secret key, avviso all'utente). Rischio accettato.
@@ -65,6 +65,10 @@ vedi la sezione "Secret key MyPlaylist: lunghezza" in `AGENTS.md`.
 **Risolto — 1.8 (pkill locale).** Il telecomando uccideva qualunque processo con "vlc" nel nome, e lo faceva anche puntando a un server remoto. Ora `killLocalVlcIfSameMachine()` verifica che l'IP di `myPlaylistIp` sia un indirizzo di questa macchina prima di eseguire il kill, e usa `pkill -x vlc` (nome esatto) invece di `pkill -f vlc` (corrispondenza sulla riga di comando, che agganciava anche processi non-VLC). Il comando `kill_vlc` del server resta l'unico modo per fermare VLC remoto.
 
 **Nota su 1.9.** La codifica dei dati del server negli URL e' coperta da `Uri` con `pathSegments`/`queryParameters`, che percent-encodano i segmenti, e da un controllo sull'host. Restano fuori scope gli URL del download aggiornamenti (`update_service.dart`), che arrivano dall'API GitHub: sono protetti dal confronto SHA-256, e l'unica alternativa sarebbe un allowlist di host che romperebbe i mirror.
+
+**Risolto — 1.11 (MyPlaylist).** Il lavoro in `working tree` non era mai stato compilato: 9 errori (`ScaffoldMessenger.showBar` e `Snack` non esistono, e tre `shape:` erano `BorderRadius` dove serve `RoundedRectangleBorder`). Il difetto serio era altro: il nuovo `UpdateService` scaricava un eseguibile (`.AppImage`, `.exe`, `.msix`, `.deb`, `.apk`) e **lo avviava senza verifica**. Ora l'impronta SHA-256 viene letta dall'asset `<file>.sha256` e confrontata, il file con impronta diversa viene cancellato, e **senza impronta pubblicata l'installazione automatica non avviene**. Download su `.part` con rinominamento, limite di dimensione, timeout.
+
+Nota per il rilascio: l'installazione in-app di MyPlaylist resta inactive finche' `publish-precompiled.yml` e `release.yml` non pubblicano l'asset `.sha256` per ogni binario. Finche' e' cosi' l'utente scarica e apre il file a mano: comportamento corretto, ma utile sapere che il flusso automatico dipende da quel passaggio.
 
 ### Fase 1 — Correttezza (nessun impatto sul server, alto payoff)
 
@@ -83,7 +87,7 @@ vedi la sezione "Secret key MyPlaylist: lunghezza" in `AGENTS.md`.
 | 2.11 | Copertura di test per il layer servizi con un server RC finto | `test/support/fake_vlc_server.dart`, `test/vlc_service_test.dart` | Bloccante | ok | **fatto** (14 test) |
 | 2.12 | Verificare che i nuovi test **falliscano** col codice vecchio (test di regressione veri) | — | — | ok | **fatto**: 2.1, 2.3, 2.4, 2.5, 2.6, 2.7 rivoltati e confermati |
 
-**Test in circolazione** (da 17 a **100** dopo Fase 0 e 1.10): `vlc_service_test.dart` (19), `connection_service_test.dart` (18), `my_playlist_service_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (2), piu' i 16 preesistenti su modelli e widget. Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart` e `fake_release_server.dart` (aggiunto in Fase 0).
+**Test in circolazione** (da 17 a **109** dopo Fase 0, 1.10 e 3.16): `vlc_service_test.dart` (19), `connection_service_test.dart` (18), `my_playlist_service_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `update_dialog_test.dart` (10), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (2), piu' i 16 preesistenti su modelli e widget. Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart` e `fake_release_server.dart` (aggiunto in Fase 0).
 
 Copertura per file, per capire dove il debito si nasconde (misurata il 27/09/2026):
 
@@ -98,7 +102,9 @@ Copertura per file, per capire dove il debito si nasconde (misurata il 27/09/202
 | `connection_service` | 66.4 | `vlc_provider` | 7.2 |
 | | | `secure_storage_service` | 88.0 |
 
-**Copertura**: **23.8%** delle righe (700/2945). La percentuale e' scesa dal 26.3% della Fase 1 perche' Fase 0 e 1.10 hanno aggiunto ~830 righe di codice di produzione; i test sono cresciuti da 71 a 100.
+**Copertura**: **33.9%** delle righe (764/2256), misurata su un `coverage/lcov.info` pulito.
+
+Attenzione a come si legge questo numero: le cifre 26.3% e 23.2% che erano in questa tabella fino alla 3.16 **erano sbagliate**. `lcov.info` si appende a ogni `flutter test --coverage` senza venire cancellato, quindi la somma contava due esecuzioni sovrapposte (2117 + 828 righe) invece del totale reale del sorgente. La lezione operativa: rimuovere `coverage/` prima di ogni misura, e fidarsi del numero solo se i file in `SF:` corrispondono a quelli in `lib/`.
 
 **Risolto — 1.10 e 3.15.** Il difetto era piu' grave di una segnalazione mancante. Con il comportamento precedente, su una macchina senza keyring la migrazione dei segreti **li cancellava da SharedPreferences senza riuscire a spostarli**: la password dell'utente spariva senza rimedio. Tre correzioni:
 
@@ -121,14 +127,14 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 3.6 | Test di contratto contro il server reale: header BE, min 28 byte, `nonce\|\|mac\|\|ciphertext`, chiave zero-padded | `test/support/fake_my_playlist_server.dart` | Alto | ok | **fatto** (14 test) — **limite**: replica fedele del lato server in un helper di test, non importa il codice reale di MyPlaylist (progetto separato) |
 | 3.7 | Fixare `release.sh`: oggi `flutter test \|\| echo Warning` con `set -e` → una release con test rotti parte lo stesso | `scripts/release.sh:22-23` | Alto | ok | **fatto** |
 | 3.8 | Aggiungere `flutter test` a `check_code.sh` (oggi solo format + analyze) | `scripts/check_code.sh` | Medio | ok | **fatto** |
-| 3.9 | Coverage in CI (`test.yml` oggi non la calcola) | `.github/workflows/test.yml` | Medio | ok | **fatto**: `flutter test --coverage`, riepilogo in `$GITHUB_STEP_SUMMARY`, `lcov.info` come artifact. Baseline al termine della Fase 1: 26.3% (556/2117). Dopo Fase 0 e 1.10 la baseline e' **23.8%** (700/2945): le righe di produzione sono cresciute piu' dei test |
+| 3.9 | Coverage in CI (`test.yml` oggi non la calcola) | `.github/workflows/test.yml` | Medio | ok | **fatto**: `flutter test --coverage`, riepilogo in `$GITHUB_STEP_SUMMARY`, `lcov.info` come artifact. Baseline corrente: **33.9%** (764/2256). Attenzione: `lcov.info` si appende a ogni run, quindi in CI va rimosso prima di misurare |
 | 3.10 | Test di copertura per gli scenari di errore (connessione persa, playlist vuota, aggiornamento fallito) | `test/vlc_service_test.dart`, `test/my_playlist_service_test.dart` | Medio | ok | **fatto** |
 | 3.11 | **Drift di formattazione che faceva fallire la CI**: `test/filter_settings_test.dart` e `test/playlist_item_test.dart` non passavano `dart format --set-exit-if-changed`, quindi il workflow `test.yml` su `main` è rosso dalla commit `4dce47f` | due file di test | Alto | ok | **fatto** (nel working tree, non committato) |
 | 3.12 | Test per `isVersionGreater` (build metadata, prerelease, prefisso `v`) | `test/update_service_test.dart` | Medio | ok | **fatto** (6 test) |
 | 3.13 | `release.sh` compila iOS, Windows e Linux sulla stessa macchina: fallisce sempre su un sistema senza quegli SDK | `scripts/release.sh` | Medio | ok | **fatto**: ogni piattaforma viene saltata con avviso se manca l'SDK, i fallimenti veri escono con codice 1 |
 | 3.14 | Con VLC "connesso ma morto" il primo retry arriva dopo ~22 s (5 comandi × 1,5 s di timeout × 3 tentativi) | `vlc_service.dart`, `app_constants.dart` | Medio | ok | **decisione** (D10): i timeout sono già brevi per impostazione, ridurli cambia il comportamento su reti lente |
 | 3.15 | Test per `SecureStorageService`: era a **0%** pur essendo il codice che protegge i segreti | `test/secure_storage_service_test.dart` | Alto | ok | **fatto** (13 test) |
-| 3.16 | Test per `update_dialog.dart` (0%, 77 righe): il widget e' stato riscritto in Fase 0 per lo scaricamento verificato, ma nessun test lo copre | `test/update_dialog_test.dart` | Medio | ok | da fare |
+| 3.16 | Test per `update_dialog.dart` (era a 0% dopo la riscrittura della Fase 0) | `test/update_dialog_test.dart` | Medio | ok | **fatto** (10 test, 73.1%) |
 
 ### Fase 3 — Performance
 

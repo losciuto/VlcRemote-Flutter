@@ -77,6 +77,23 @@ class GitHubRelease {
   }
 }
 
+/// Cosa fare con un rilascio: installare l'APK in locale, o mandare l'utente
+/// alla pagina del rilascio.
+class UpdateStart {
+  const UpdateStart._({this.apkPath, this.releasePage});
+
+  /// Percorso dell'APK scaricato e verificato.
+  final String? apkPath;
+
+  /// Pagina del rilascio da aprire nel browser.
+  final Uri? releasePage;
+
+  factory UpdateStart.apk(String path) => UpdateStart._(apkPath: path);
+
+  factory UpdateStart.openReleasePage(Uri url) =>
+      UpdateStart._(releasePage: url);
+}
+
 class UpdateService {
   static const String _repoUrl =
       'https://api.github.com/repos/losciuto/VlcRemote-Flutter/releases/latest';
@@ -108,6 +125,35 @@ class UpdateService {
       print('[UpdateService] Errore durante il controllo aggiornamenti: $e');
     }
     return null;
+  }
+
+  /// Decide come installare [release] e porta avanti l'operazione.
+  ///
+  /// Su Android l'APK viene scaricato e verificato, e il percorso torna in
+  /// [UpdateStart.apkPath]. Su ogni altra piattaforma l'interfaccia HTTP non
+  /// e' distribuibile come APK, quindi si rimanda alla pagina del rilascio,
+  /// dove la firma viene verificata dal sistema.
+  ///
+  /// La decisione e' qui e non nel widget per due motivi: il widget non deve
+  /// conoscere `Platform`, e cosi' il ramo Android resta verificabile dai test
+  /// senza dover simulare una piattaforma.
+  Future<UpdateStart> prepareUpdate(
+    GitHubRelease release, {
+    required Directory targetDirectory,
+    void Function(double? progress)? onProgress,
+    bool? isAndroid,
+  }) async {
+    final android = isAndroid ?? Platform.isAndroid;
+    if (!android || release.apkUrl == null) {
+      return UpdateStart.openReleasePage(Uri.parse(release.htmlUrl));
+    }
+
+    final apkPath = await downloadVerifiedApk(
+      release,
+      targetDirectory: targetDirectory,
+      onProgress: onProgress,
+    );
+    return UpdateStart.apk(apkPath);
   }
 
   /// Scarica l'APK del rilascio verificandone l'impronta SHA-256.

@@ -8,7 +8,24 @@ import '../services/update_service.dart';
 class UpdateDialog extends StatefulWidget {
   final GitHubRelease release;
 
-  const UpdateDialog({super.key, required this.release});
+  /// Iniezione per i test: il widget non deve creare il servizio da solo, o
+  /// non sarebbe verificabile.
+  final UpdateService? updateService;
+
+  /// Iniezione per i test della directory temporanea, che su un ambiente di
+  /// test non esiste.
+  final Future<Directory> Function()? temporaryDirectory;
+
+  /// Iniezione per i test del ramo Android.
+  final bool? isAndroid;
+
+  const UpdateDialog({
+    super.key,
+    required this.release,
+    this.updateService,
+    this.temporaryDirectory,
+    this.isAndroid,
+  });
 
   @override
   State<UpdateDialog> createState() => _UpdateDialogState();
@@ -22,18 +39,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
   double? _downloadProgress;
 
   Future<void> _startUpdate() async {
-    if (widget.release.apkUrl == null || !Platform.isAndroid) {
-      // Fallback per iOS o se non c'è l'APK diretto
-      final url = Uri.parse(widget.release.htmlUrl);
-      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        setState(() {
-          _errorMessage = 'Impossibile aprire la pagina del rilascio.';
-        });
-      }
-      if (mounted) Navigator.of(context).pop();
-      return;
-    }
-
     setState(() {
       _isDownloading = true;
       _errorMessage = null;
@@ -41,25 +46,40 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
-      // Il download, la verifica dell'impronta SHA-256 e il limite di
-      // dimensione stanno nel servizio: il widget non deve poter installare
+      // Il download, la verifica dell'impronta SHA-256 e la scelta della
+      // piattaforma stanno nel servizio: il widget non deve poter installare
       // un APK senza che sia stato verificato.
-      final tempDir = await getTemporaryDirectory();
-      final apkPath = await _updateService.downloadVerifiedApk(
+      final tempDir =
+          await (widget.temporaryDirectory ?? getTemporaryDirectory)();
+      final start = await _updateService.prepareUpdate(
         widget.release,
         targetDirectory: tempDir,
+        isAndroid: widget.isAndroid,
         onProgress: (progress) {
           if (mounted) setState(() => _downloadProgress = progress);
         },
       );
 
-      // Apri l'APK per l'installazione
-      final result = await OpenFilex.open(apkPath);
-
-      if (result.type != ResultType.done) {
-        throw Exception(
-          'Impossibile avviare l\'installazione: ${result.message}',
-        );
+      if (start.apkPath != null) {
+        final result = await OpenFilex.open(start.apkPath!);
+        if (result.type != ResultType.done) {
+          throw Exception(
+            'Impossibile avviare l\'installazione: ${result.message}',
+          );
+        }
+      } else {
+        final url = start.releasePage;
+        if (url == null ||
+            !await launchUrl(url, mode: LaunchMode.externalApplication)) {
+          // Il widget potrebbe essere stato chiuso mentre si apriva il browser:
+          // controllare `mounted` prima di toccare lo stato.
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'Impossibile aprire la pagina del rilascio.';
+            });
+          }
+          return;
+        }
       }
 
       if (mounted) Navigator.of(context).pop();
