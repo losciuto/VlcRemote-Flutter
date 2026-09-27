@@ -2,12 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Non rilasciato]
+## [2.7.5] - 2026-09-27
 
 Lavori di rifinitura, nessuno dei quali cambia il protocollo con MyPlaylist:
 stessi pacchetti, stessi comandi, stessa chiave.
 
 ### Fixed
+- **La connessione resta registrata se VLC non risponde**: prima la connessione
+  veniva salvata solo dopo che la sonda su VLC era andata a buon fine, e
+  MyPlaylist e' un server a se' stante. Una TV spenta bastava a far fallire
+  anche le playlist, che non hanno niente a che fare con VLC, e i due problemi
+  si mascheravano: il sintomo era "MyPlaylist non risponde" e la causa era VLC.
+- **"Riprova" non usa piu' il contesto di uno State dismesso**: il dialogo si
+  chiude prima di attendere la connessione, e il pulsante dello snack bar
+  richiamava `_connectTo` su uno State smontato, dove `if (!mounted)` non
+  arrivava in tempo perche' l'eccezione nasceva alla lettura di `context`.
+- **La chiave segreti accetta meno di 32 caratteri**: il form rifiutava
+  qualunque chiave che non fosse lunga esattamente 32 caratteri, ma nessun
+  lato del protocollo lo richiede, la chiave viene completata con zeri e
+  MyPlaylist fa lo stesso (C4). Il vincolo che serve e' solo il massimo.
+- **Le icone del launcher**: su macOS era ancora il logo di default di Flutter,
+  intatto dal primo commit, perche' la sezione `macos` mancava in
+  `flutter_launcher_icons` e il tool non guardava quella piattaforma. Su Linux
+  non c'era un desktop entry ne un'icona installabile, quindi l'app non aveva
+  una voce nel menu. Aggiunti entrambi, e `linux/share` contiene il desktop
+  entry e il set hicolor a otto taglie con le regole di installazione.
+- **Icona della finestra su Linux**: `gtk_window_set_icon` va chiamata due
+  volte, perche' GTK non pubblica `_NET_WM_ICON` finche' la finestra non e'
+  realizzata, e la barra delle applicazioni mostra l'icona generica dei
+  programmi.
 - **Segreti non piu' persi**: `SecureStorageService` non nasconde piu' gli
   errori di scrittura. Prima, un secure storage non disponibile faceva perdere
   le password salvate senza dirlo, e i segreti finivano nel JSON in chiaro.
@@ -42,6 +65,14 @@ stessi pacchetti, stessi comandi, stessa chiave.
   dialogo delle informazioni mostrava 2.7.4 quando l'app era 2.7.5.
 - **Testi in italiano**: il dialogo che ferma VLC sul PC remoto era in
   inglese, su un'azione distruttiva.
+- **Aggiornamento Dipendenze**: 35 pacchetti inclusi `package_info_plus`
+  (9.0.0 -> 9.0.1), `path_provider` (2.1.5 -> 2.1.6), `xml` (6.6.1 -> 7.0.1),
+  `intl` (0.20.2 -> 0.20.3), e dipendenze transitive.
+
+### Added
+- **Copertura test**: `test/playlist_item_test.dart` (6 test) e
+  `test/filter_settings_test.dart` (4 test) sui rispettivi modelli, piu' i test
+  del layer servizi con un server RC finto. Il totale e' passato da 17 a 215.
 
 ### Removed
 - Dieci ricostruzioni dell'albero che non mostravano nulla: il valore del
@@ -51,21 +82,6 @@ stessi pacchetti, stessi comandi, stessa chiave.
 - `docs/CRITICAL_FIXES.md`: quattro fix gia' applicati, con numeri di riga
   invecchiati. L'unico ancora mancante, la validazione degli IP, e' stato
   completato.
-
-## [2.7.5] - 2026-09-25
-
-### Changed
-- **Dependency Update**: Updated 35 packages including `package_info_plus` (9.0.0 → 9.0.1), `path_provider` (2.1.5 → 2.1.6), `xml` (6.6.1 → 7.0.1), `intl` (0.20.2 → 0.20.3), and transitive dependencies (`url_launcher`, `shared_preferences`, `sqflite`, `ffi`).
-- **Pubspec Cleanup**: Removed duplicate `flutter_launcher_icons` entry in `pubspec.yaml`.
-
-### Added
-- **Test Coverage**: Added `test/playlist_item_test.dart` (6 tests) for `PlaylistItem` model (displayName, copyWith, equality, defaults).
-- **Test Coverage**: Added `test/filter_settings_test.dart` (4 tests) for `FilterSettings` model (defaults, JSON round-trip, null handling).
-- **Dev Dependency**: Added `mockito: ^5.6.4` for future unit testing.
-
-### Metrics
-- Total tests: 17/17 passing
-- `flutter analyze lib/`: No issues found
 
 
 ## [2.7.4] - 2026-03-31

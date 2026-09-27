@@ -3,20 +3,63 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
-## [2.7.5] - 25/09/2026
+## [2.7.5] - 27/09/2026
+
+Lavori di rifinitura, nessuno dei quali cambia il protocollo con MyPlaylist:
+stessi pacchetti, stessi comandi, stessa chiave.
+
+### Correzioni
+- **La connessione resta registrata se VLC non risponde**: prima veniva salvata
+  solo dopo che la sonda su VLC era andata a buon fine, e MyPlaylist e' un
+  server a se' stante. Una TV spenta bastava a far fallire anche le playlist,
+  che non hanno niente a che fare con VLC, e i due problemi si mascheravano.
+- **"Riprova" non usa piu' il contesto di uno State dismesso**: il dialogo si
+  chiude prima di attendere la connessione, e `if (!mounted)` non arrivava in
+  tempo perche' l'eccezione nasceva alla lettura di `context`.
+- **La chiave segreti accetta meno di 32 caratteri**: il form rifiutava
+  qualunque chiave non lunga esattamente 32 caratteri, ma nessun lato del
+  protocollo lo richiede: viene completata con zeri, e MyPlaylist fa lo stesso
+  (C4). Il vincolo che serve e' solo il massimo.
+- **Le icone del launcher**: su macOS era ancora il logo di default di Flutter,
+  perche' la sezione `macos` mancava in `flutter_launcher_icons`. Su Linux non
+  c'era un desktop entry ne un'icona installabile, quindi l'app non aveva una
+  voce nel menu. Aggiunti entrambi, con il set hicolor a otto taglie.
+- **Icona della finestra su Linux**: `gtk_window_set_icon` va chiamata due
+  volte, perche' GTK non pubblica `_NET_WM_ICON` finche' la finestra non e'
+  realizzata.
+- **Segreti non piu' persi**: `SecureStorageService` non nasconde piu' gli
+  errori di scrittura, e i segreti non finiscono piu' nel JSON in chiaro.
+- **Aggiornamenti verificati**: un binario senza checksum non viene piu'
+  eseguito, e il download va su file temporaneo con rinomina atomica.
+- **Dispose**: i nove campi del dialogo filtri e i tre campi MyPlaylist del
+  dialogo di connessione non venivano distrutti.
+- **Indirizzi IP**: la validazione contava quattro parti e basta, quindi
+  `999.999.999.999` passava. I campi MyPlaylist non erano affatto validati.
 
 ### Modificato
-- **Aggiornamento Dipendenze**: Aggiornati 35 pacchetti inclusi `package_info_plus` (9.0.0 → 9.0.1), `path_provider` (2.1.5 → 2.1.6), `xml` (6.6.1 → 7.0.1), `intl` (0.20.2 → 0.20.3), e dipendenze transitive (`url_launcher`, `shared_preferences`, `sqflite`, `ffi`).
-- **Pulizia Pubspec**: Rimossa la voce duplicata `flutter_launcher_icons` in `pubspec.yaml`.
+- **Log con livelli** al posto dei `print` sparsi: `getPlaylist` su 6000 voci
+  passa da 1057 ms a 582 ms.
+- **I comandi di sistema non stanno piu' nel provider**, che non usa piu'
+  `dart:io` ed e' testabile senza un sistema operativo sotto.
+- **Le risposte MyPlaylist non dipendono piu' dalla chiusura della socket**: con
+  un server che non chiude, un messaggio gia' arrivato e valido veniva scartato
+  e tornava un errore dopo 10 secondi. Ora arriva in 31 ms.
+- **La versione arriva da `pubspec.yaml`**: il dialogo delle informazioni
+  mostrava 2.7.4 quando l'app era 2.7.5.
+- **Aggiornamento Dipendenze**: 35 pacchetti inclusi `package_info_plus`
+  (9.0.0 → 9.0.1), `path_provider` (2.1.5 → 2.1.6), `xml` (6.6.1 → 7.0.1),
+  `intl` (0.20.2 → 0.20.3), e dipendenze transitive.
 
 ### Aggiunto
-- **Copertura Test**: Aggiunto `test/playlist_item_test.dart` (6 test) per il modello `PlaylistItem` (displayName, copyWith, equality, valori default).
-- **Copertura Test**: Aggiunto `test/filter_settings_test.dart` (4 test) per il modello `FilterSettings` (valori default, round-trip JSON, gestione null).
-- **Dipendenza Dev**: Aggiunto `mockito: ^5.6.4` per test unitari futuri.
+- **Copertura Test**: `test/playlist_item_test.dart` (6 test) e
+  `test/filter_settings_test.dart` (4 test) sui rispettivi modelli, piu' i test
+  del layer servizi con un server RC finto. Totale da 17 a 215 test.
 
-### Metriche
-- Test totali: 17/17 passanti
-- `flutter analyze lib/`: Nessun problema rilevato
+### Rimosso
+- Dieci ricostruzioni dell'albero che non mostravano nulla.
+- `lib/config/app_config.dart`: quaranta righe di costanti mai usate.
+- `docs/CRITICAL_FIXES.md`: quattro fix gia' applicati, con numeri di riga
+  invecchiati.
 
 
 ## [2.7.4] - 31/03/2026

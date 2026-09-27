@@ -357,7 +357,7 @@ Questo progetto è rilasciato sotto licenza MIT. Vedi il file `LICENSE` per i de
 **losciuto**
 
 - Versione originale Android: [losciuto/vlcremote](https://github.com/losciuto/vlcremote)
-- Versione Flutter: 2.7.5 (Settembre 2026)
+- Versione Flutter: 2.7.5 (27 Settembre 2026)
 
 ---
 
