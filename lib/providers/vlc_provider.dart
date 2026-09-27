@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import '../models/vlc_connection.dart';
 import '../models/vlc_status.dart';
@@ -15,7 +15,12 @@ import '../services/my_playlist_service.dart';
 import '../services/settings_service.dart';
 
 /// Provider per gestire lo stato dell'applicazione VLC Remote
-class VlcProvider with ChangeNotifier {
+///
+/// Osserva il ciclo di vita dell'app per sospendere il polling dello stato
+/// quando l'app non e' in primo piano: senza questo, il timer continua a
+/// interrogare VLC e a ricostruire la UI mentre l'utente e' su un'altra app,
+/// consumando batteria e traffico di rete per niente.
+class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   final VlcService _vlcService = VlcService();
   final VlcHttpService _vlcHttpService = VlcHttpService();
   final ConnectionService _connectionService = ConnectionService();
@@ -87,7 +92,31 @@ class VlcProvider with ChangeNotifier {
   }
 
   VlcProvider() {
+    WidgetsBinding.instance.addObserver(this);
     _init();
+  }
+
+  /// Sospende o riprende il polling a seconda di dove si trova l'app.
+  ///
+  /// In pausa il timer viene fermato del tutto, non solo reso silenzioso: un
+  /// `Timer.periodic` che continua a scandire il tempo tiene l'isolate vivo e,
+  /// sui dispositivi mobili, compete con il risparmio energetico del sistema.
+  /// Al ritorno in primo piano lo stato viene ricaricato subito, cosi' l'utente
+  /// non vede per qualche secondo informazioni vecchie.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_vlcService.isConnected) {
+          _startStatusUpdates();
+          unawaited(_updateStatus());
+        }
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        _stopStatusUpdates();
+    }
   }
 
   /// Inizializza il provider
@@ -793,6 +822,7 @@ class VlcProvider with ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
     _stopStatusUpdates();
     _volumeDebounceTimer?.cancel();
     _vlcService.dispose();

@@ -143,12 +143,14 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
 | 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | `home_screen.dart:63,84,96`, `control_panel.dart:24-203`, `my_playlist_panel.dart:64-264` | Alto | ok | da fare |
-| 4.2 | Sospendere il polling in background con `WidgetsBindingObserver` (assente in tutto `lib/`) | assente | Alto | ok | da fare |
+| 4.2 | Sospendere il polling in background (`WidgetsBindingObserver` assente in tutto `lib/`) | `vlc_provider.dart` | Alto | ok | **fatto, senza test** |
 | 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart:40,109,163` | Medio | ok | da fare |
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 5 call site) | `connection_service.dart:40-55` | Medio | ok | da fare |
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart:402-429` | Medio | ok | da fare |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart:45,114`, `my_playlist_service.dart:95` | Medio | ok | da fare |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+
+**Nota su 4.2.** `VlcProvider` ora registra un `WidgetsBindingObserver`: in pausa il timer viene fermato, al ritorno in primo piano lo stato viene ricaricato subito. **Non c'e' un test**, e il motivo e' utile: per provarlo serve portare il provider in stato connesso, e non si riesce. Il provider crea i propri servizi (`final VlcService _vlcService = VlcService();`) e non accetta un socket finto, quindi il test si blocca. La causa radice e' **5.4** (dependency injection): finche' i servizi non sono iniettabili, il provider non e' testabile quando connesso, e la sua copertura resta al 7.2%. Vale la pena fare 5.4 prima di altri test sul provider.
 
 ### Fase 4 — Architettura e UI
 
