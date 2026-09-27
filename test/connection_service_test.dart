@@ -362,4 +362,104 @@ void main() {
       });
     });
   });
+
+  group('ConnectionService - cache (4.4)', () {
+    late ConnectionService service;
+    late InMemorySecretStore secrets;
+    late SharedPreferences prefs;
+
+    Future<void> initWith(String json) async {
+      SharedPreferences.setMockInitialValues({'vlc_connections': json});
+      secrets = InMemorySecretStore();
+      service = ConnectionService(secrets: secrets);
+      await service.init();
+      prefs = await SharedPreferences.getInstance();
+    }
+
+    VlcConnection sample({String id = '1', String name = 'Sala'}) =>
+        VlcConnection(
+          id: id,
+          name: name,
+          ipAddress: '192.168.1.10',
+          port: 8080,
+          lastUsed: DateTime(2026, 9, 27),
+          vlcPassword: 'pw-$id',
+        );
+
+    test('la seconda lettura non rilegge le preferenze', () async {
+      await initWith(
+        jsonEncode([
+          {...validJson('1')},
+        ]),
+      );
+
+      expect(await service.getConnections(), hasLength(1));
+
+      // Scrittura per le preferenze, in chiaro: se la cache funzionasse, la
+      // lettura successiva continuerebbe a vedere la connessione.
+      prefs.setString('vlc_connections', '[]');
+
+      expect(await service.getConnections(), hasLength(1));
+    });
+
+    test('salvare aggiorna la cache', () async {
+      await initWith('[]');
+
+      await service.saveConnection(sample());
+      expect(await service.getConnections(), hasLength(1));
+
+      await service.saveConnection(sample(name: 'Sala TV'));
+      final connections = await service.getConnections();
+      expect(connections.single.name, 'Sala TV');
+    });
+
+    test(
+      'la copia restituita e modificabile senza intaccare la cache',
+      () async {
+        // Quasi tutti i chiamanti ordinano o rimuovono dalla lista ricevuta: se
+        // fosse l'istanza in cache, quelle modifiche finirebbero dentro la cache
+        // e la lista restituita da getConnections cambierebbe ordine.
+        await initWith(
+          jsonEncode([
+            {...validJson('1')},
+            {...validJson('2')},
+          ]),
+        );
+
+        final connections = await service.getConnections();
+        connections.sort((a, b) => b.id.compareTo(a.id));
+        connections.clear();
+
+        final rilette = await service.getConnections();
+        expect(rilette, hasLength(2));
+        expect(rilette.map((c) => c.id), ['1', '2']);
+      },
+    );
+
+    test('eliminare una connessione la toglie anche dalla cache', () async {
+      await initWith(
+        jsonEncode([
+          {...validJson('1')},
+          {...validJson('2')},
+        ]),
+      );
+      expect(await service.getConnections(), hasLength(2));
+
+      await service.deleteConnection('1');
+
+      expect(await service.getConnections(), hasLength(1));
+    });
+
+    test('clearAllConnections svuota la cache', () async {
+      await initWith(
+        jsonEncode([
+          {...validJson('1')},
+        ]),
+      );
+
+      await service.clearAllConnections();
+
+      expect(await service.getConnections(), isEmpty);
+    });
+  });
 }

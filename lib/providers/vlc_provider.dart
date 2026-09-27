@@ -843,6 +843,8 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     _stopStatusUpdates();
     _volumeDebounceTimer?.cancel();
     _vlcService.dispose();
+    // Chiude le connessioni HTTP persistenti tenute aperte dal client condiviso.
+    _vlcHttpService.dispose();
     super.dispose();
   }
 

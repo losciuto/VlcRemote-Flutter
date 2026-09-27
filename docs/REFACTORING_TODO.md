@@ -144,11 +144,15 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 |---|---|---|---|---|---|
 | 4.1 | `notifyListeners()` granulari o `Selector` al posto dei `Consumer` grossolani (AppBar, body, FAB ricostruiti 1×/s) | `home_screen.dart:63,84,96`, `control_panel.dart:24-203`, `my_playlist_panel.dart:64-264` | Alto | ok | da fare |
 | 4.2 | Sospendere il polling in background (`WidgetsBindingObserver` assente in tutto `lib/`) | `vlc_provider.dart` | Alto | ok | **fatto** (3 test) |
-| 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart:40,109,163` | Medio | ok | da fare |
-| 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 5 call site) | `connection_service.dart:40-55` | Medio | ok | da fare |
+| 4.3 | `http.Client` singleton invece di uno nuovo per richiesta (niente keep-alive) | `vlc_http_service.dart` | Medio | ok | **fatto** |
+| 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart:402-429` | Medio | ok | da fare |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart:45,114`, `my_playlist_service.dart:95` | Medio | ok | da fare |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+
+**4.4, la cache va invalidata, non solo riempita.** `getConnections()` restituisce sempre una copia nuova: dieci call site e quasi tutti la modificano (`sort`, `removeWhere`, `add`), quindi restituire l'istanza in cache avrebbe fatto finire quelle modifiche dentro la cache e cambiato l'ordine con cui la lista viene riletta. La cache vale solo per cio' che e' stato scritto: se `setString` fallisce viene invalidata, e `clearAllConnections` la svuota.
+
+**4.3, attenzione al ciclo di vita.** Un client condiviso tiene una connessione TCP aperta: senza `dispose()` sopravvive al provider. Chiamato da `dispose()` del provider, non da `disconnect()`: staccarsi da un server non deve costringere a riaprire la connessione al successivo.
 
 **Nota su 4.2 e 5.4.** I due item erano bloccati a vicenda: senza 5.4 il provider non era testabile quando connesso, quindi 4.2 non aveva test. Risolvendo 5.4 (i servizi sono iniettabili, i default sono gli stessi di prima) i tre test di 4.2 sono diventati scrivibili e coprono davvero il comportamento: sono stati verificati fallire quando la sospensione viene rimossa.
 

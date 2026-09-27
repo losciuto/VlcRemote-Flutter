@@ -12,6 +12,15 @@ class ConnectionService {
   SharedPreferences? _prefs;
   final SecretStore _secrets;
 
+  /// Connessioni gia' lette, per non rileggere e riparseggiare il JSON a ogni
+  /// chiamata: [getConnections] e' chiamato da dieci posti e ognuno, per ogni
+  /// connessione, interrogava anche lo store sicuro.
+  ///
+  /// La copia restituita ai chiamanti e' sempre nuova: quasi tutti la
+  /// modificano (sort, removeWhere, add), quindi restituire l'istanza in cache
+  /// farebbe finire quelle modifiche dentro la cache.
+  List<VlcConnection>? _cache;
+
   /// I campi che non devono mai finire in SharedPreferences: su Android quel
   /// file finisce in chiaro nella sandbox dell'app e nel backup automatico.
   static const List<String> _secretFields = [
@@ -56,6 +65,9 @@ class ConnectionService {
   /// un array vuoto, facendo perdere tutte le connessioni all'utente senza
   /// alcun avviso.
   Future<List<VlcConnection>> getConnections() async {
+    final cached = _cache;
+    if (cached != null) return List.of(cached);
+
     try {
       final jsonString = _prefs!.getString(_connectionsKey);
       if (jsonString == null || jsonString.isEmpty) {
@@ -105,7 +117,8 @@ class ConnectionService {
         }
       }
 
-      return connections;
+      _cache = List.of(connections);
+      return List.of(connections);
     } catch (e) {
       print('Errore durante il caricamento delle connessioni: $e');
       return [];
@@ -171,7 +184,16 @@ class ConnectionService {
               c.toJson()..removeWhere((key, _) => _secretFields.contains(key)),
         )
         .toList();
-    return _prefs!.setString(_connectionsKey, jsonEncode(jsonList));
+
+    final ok = await _prefs!.setString(_connectionsKey, jsonEncode(jsonList));
+    // La cache vale solo per cio' che e' stato scritto davvero: se la scrittura
+    // fallisce, la prossima lettura deve tornare ai dati su disco.
+    if (ok) {
+      _cache = List.of(connections);
+    } else {
+      _cache = null;
+    }
+    return ok;
   }
 
   /// Coppie chiave-valore dei segreti di una connessione.
@@ -310,6 +332,9 @@ class ConnectionService {
       }
       await _prefs!.remove(_connectionsKey);
       await _prefs!.remove(_lastConnectionKey);
+      // Le connessioni non sono piu' su disco: la cache va svuotata, o
+      // `getConnections` continuerebbe a restituirle come se esistessero.
+      _cache = null;
       return true;
     } catch (e) {
       print('Errore durante la pulizia delle connessioni: $e');

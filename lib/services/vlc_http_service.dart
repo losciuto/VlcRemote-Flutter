@@ -7,6 +7,12 @@ import '../models/playlist_item.dart';
 /// Servizio per comunicare con VLC tramite interfaccia HTTP
 /// Richiede che VLC sia configurato con una password.
 class VlcHttpService {
+  /// Client condiviso: `http.get` di primo livello crea e chiude un client
+  /// nuovo a ogni chiamata, quindi ogni richiesta del polling (una al secondo)
+  /// apriva e chiudeva una connessione TCP. Con un client condiviso la
+  /// connessione resta viva e le richieste successive viaggiano su quella.
+  final http.Client _client = http.Client();
+
   String? _host;
   int? _port;
   String? _password;
@@ -43,6 +49,12 @@ class VlcHttpService {
     return Uri.parse('http://$_host:$_port$path');
   }
 
+  /// Chiude il client HTTP e le sue connessioni persistenti.
+  ///
+  /// Va chiamato quando il servizio non serve piu': senza, la connessione
+  /// tenuta aperta sopravvive al provider.
+  void dispose() => _client.close();
+
   /// URL di una copertina della playlist di VLC.
   ///
   /// Costruito con [Uri] invece che per interpolazione: l'id arriva dal server e
@@ -74,7 +86,7 @@ class VlcHttpService {
     if (!isConfigured) return null;
 
     try {
-      final response = await http
+      final response = await _client
           .get(_getUri('/requests/status.xml'), headers: _getHeaders())
           .timeout(const Duration(seconds: 2));
 
@@ -148,7 +160,7 @@ class VlcHttpService {
     if (!isConfigured) return [];
 
     try {
-      final response = await http
+      final response = await _client
           .get(_getUri('/requests/playlist.xml'), headers: _getHeaders())
           .timeout(const Duration(seconds: 3));
 
@@ -202,7 +214,7 @@ class VlcHttpService {
         queryParams,
       );
 
-      final response = await http
+      final response = await _client
           .get(uri, headers: _getHeaders())
           .timeout(const Duration(seconds: 2));
 
