@@ -49,8 +49,8 @@ class AppLogger {
   static bool get isDebugEnabled => minLevel.index <= LogLevel.debug.index;
 
   /// Dettaglio interno, spento di default.
-  static void d(String tag, String message) =>
-      _write(LogLevel.debug, tag, message);
+  static void d(String tag, String message, [Object? error]) =>
+      _write(LogLevel.debug, tag, error == null ? message : '$message: $error');
 
   /// Evento normale del ciclo di vita.
   static void i(String tag, String message) =>

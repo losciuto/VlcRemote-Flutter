@@ -1,12 +1,14 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vlc_remote_flutter/constants/app_constants.dart';
 import 'package:vlc_remote_flutter/models/vlc_connection.dart';
 import 'package:vlc_remote_flutter/providers/vlc_provider.dart';
 import 'package:vlc_remote_flutter/services/connection_service.dart';
 import 'package:vlc_remote_flutter/services/secure_storage_service.dart';
 import 'package:vlc_remote_flutter/services/vlc_service.dart';
 
+import 'support/fake_my_playlist_server.dart';
 import 'support/fake_vlc_server.dart';
 
 void main() {
@@ -34,6 +36,86 @@ void main() {
 
     expect(provider.isConnected, isFalse);
     expect(provider.isMyPlaylistBusy, isFalse);
+  });
+
+  group('riconnessione dopo un comando MyPlaylist (4.7)', () {
+    const secretKey = 'my_default_secret_key_32chars_long';
+
+    test(
+      "l'attesa per VLC non notifica una volta per tappa",
+      () async {
+        // La riconnessione dopo un comando MyPlaylist riuscito prevede una
+        // pausa fissa perche' VLC si avvii. Quella pausa era spezzata in dieci
+        // tappe, e ogni tappa notificava: dieci ricostruzioni dell'albero in
+        // due secondi, a intervalli regolari, senza che nulla venisse
+        // mostrato, perche' il valore del progresso non e' mai stato letto.
+        //
+        // Qui conta proprio la frequenza: la pausa deve restare, quindi il
+        // tempo trascorso non puo' scendere. Le notifiche, quelle no.
+        //
+        // La soglia sta nel mezzo fra i due comportamenti, non è il numero
+        // "dieci" della vecchia implementazione: durante l'attesa passano anche
+        // le notifiche del polling, che gira una volta al secondo. Misurati
+        // sul comando reale: 17 notifiche con le dieci tappe, 7 senza.
+        SharedPreferences.setMockInitialValues({});
+        final mp = await FakeMyPlaylistServer.start(
+          secretKey,
+          responder: (command, args) =>
+              FakeMyPlaylistServer.defaultResponse(command: command),
+        );
+        final vlc = await FakeVlcServer.start((c) => []);
+        addTearDown(() async {
+          await mp.close();
+          await vlc.close();
+        });
+
+        final provider = VlcProvider(
+          vlcService: VlcService(),
+          connectionService: ConnectionService(secrets: InMemorySecretStore()),
+        );
+        addTearDown(provider.dispose);
+
+        final ok = await provider.connect(
+          VlcConnection(
+            id: '1',
+            name: 'Sala',
+            ipAddress: vlc.host,
+            port: vlc.port,
+            myPlaylistIp: mp.host,
+            myPlaylistPort: mp.port,
+            myPlaylistSecretKey: secretKey,
+            lastUsed: DateTime(2026, 9, 27),
+          ),
+        );
+        expect(ok, isTrue, reason: 'la connessione deve riuscire');
+
+        var notifiche = 0;
+        provider.addListener(() => notifiche++);
+
+        final sw = Stopwatch()..start();
+        await provider.mpGenerateRandom();
+        sw.stop();
+
+        expect(
+          provider.lastMpStatus,
+          'SUCCESS',
+          reason: 'il comando deve andare a buon fine sul server finto',
+        );
+        expect(
+          sw.elapsedMilliseconds,
+          greaterThanOrEqualTo(AppConstants.myPlaylistReconnectDelayMs),
+          reason: "l'attesa per l'avvio di VLC va mantenuta",
+        );
+        expect(
+          notifiche,
+          lessThanOrEqualTo(10),
+          reason:
+              'la pausa deve essere una sola attesa, non dieci passi che '
+              'notificano: ne sono arrivate $notifiche',
+        );
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
   });
 
   group('polling e ciclo di vita (4.2)', () {

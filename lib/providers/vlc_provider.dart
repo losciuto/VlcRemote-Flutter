@@ -65,7 +65,6 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
   String _lastMpStatus = 'UNKNOWN'; // UNKNOWN, SUCCESS, ERROR
   List<Map<String, dynamic>> _pendingPlaylist = [];
   bool _isReconnecting = false;
-  double _reconnectionProgress = 0.0;
 
   Timer? _statusUpdateTimer;
   int _reconnectAttempts = 0;
@@ -99,7 +98,6 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
       _currentConnection?.myPlaylistIp != null &&
       _currentConnection?.myPlaylistSecretKey != null;
   bool get isReconnecting => _isReconnecting;
-  double get reconnectionProgress => _reconnectionProgress;
   FilterSettings? get lastFilterSettings => _lastFilterSettings;
 
   /// Vero se la Web API di VLC e' utilizzabile, cioe' se la connessione ha una
@@ -754,19 +752,16 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
       // Se il comando è andato a buon fine (status 'success') e NON era una preview, riconnettiamoci
       if (status == 'success' && !isPreview) {
         _myPlaylistMessage = 'OK: $message - Riconnessione VLC...';
-        _reconnectionProgress = 0.0;
         notifyListeners();
 
-        // Attendi che VLC si avvii con progress feedback
-        const totalWait = AppConstants.myPlaylistReconnectDelayMs;
-        const steps = 10;
-        const stepDuration = totalWait ~/ steps;
-
-        for (int i = 0; i < steps; i++) {
-          await Future.delayed(Duration(milliseconds: stepDuration));
-          _reconnectionProgress = (i + 1) / steps;
-          notifyListeners();
-        }
+        // Attesa perche' VLC si avvii. La pausa e' reale e va mantenuta; le
+        // dieci tappe che la dividevano non lo erano: il valore del progresso
+        // non e' mai stato letto da un widget, quindi quelle dieci
+        // notifyListeners ricostruivano l'albero duecento volte al secondo per
+        // due secondi senza mostrare nulla.
+        await Future.delayed(
+          const Duration(milliseconds: AppConstants.myPlaylistReconnectDelayMs),
+        );
 
         if (_currentConnection != null) {
           await connect(_currentConnection!);
@@ -775,8 +770,6 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
         // Aggiorna sempre la playlist dopo un comando MyPlaylist andato a buon fine
         await Future.delayed(const Duration(milliseconds: 500));
         await refreshPlaylist();
-
-        _reconnectionProgress = 0.0;
       }
     } catch (e) {
       _myPlaylistMessage = 'ERRORE: $e';

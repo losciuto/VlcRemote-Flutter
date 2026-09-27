@@ -268,4 +268,47 @@ void main() {
       expect(await server.waitForCommand('volup 1'), isTrue);
     });
   });
+
+  group('dispose', () {
+    test("non lancia se il collegamento e' gia' stato chiuso", () async {
+      // Se VLC chiude la socket (o se la connessione cade), la socket locale
+      // resta riferita dal servizio ma non e' piu' apribile, e l'errore
+      // uscirebbe da dispose: non e' il posto giusto per far fallire lo
+      // smontaggio.
+      //
+      // Nota: da solo questo test non copre il caso peggiore. Chiudendo il
+      // server la socket locale resta infatti ancora apribile, quindi il
+      // test passa anche senza la protezione. Lo stato che fa davvero
+      // fallire `close()` e' quello della riconnessione dopo un comando
+      // MyPlaylist, ed e' coperto dal test corrispondente in
+      // vlc_provider_test.dart.
+      server = await FakeVlcServer.start(defaultResponder);
+      service = VlcService();
+      await service.connect(server.host, server.port);
+
+      // Il server chiude sotto il client, come fa VLC quando esce.
+      await server.close();
+
+      expect(service.dispose, returnsNormally);
+    });
+
+    test(
+      'dopo dispose non si ricontatta, anche se il server risponde',
+      () async {
+        // Rientrare su un servizio smontato fallirebbe piu' avanti, dentro il
+        // listener, perche' lo stream delle risposte e' chiuso. Qui la
+        // connessione riuscirebbe, quindi il test distingue davvero la guardia
+        // da una connessione semplicemente fallita.
+        server = await FakeVlcServer.start(defaultResponder);
+        service = VlcService();
+        service.dispose();
+
+        final ok = await service.connect(server.host, server.port);
+
+        expect(ok, isFalse);
+        expect(service.isConnected, isFalse);
+        await server.close();
+      },
+    );
+  });
 }

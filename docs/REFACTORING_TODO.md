@@ -148,7 +148,11 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.4 | Cache in memoria di `getConnections()` (oggi `jsonDecode` a ogni chiamina, 10 call site) | `connection_service.dart` | Medio | ok | **fatto** (5 test) |
 | 4.5 | Rimuovere il busy-wait sul main isolate in `getPlaylist` (50 wake-up/s per 5 s, O(n²)) | `vlc_service.dart` | **Basso** (era Medio) | ok | **fatto, guadagno non misurabile** |
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
-| 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
+| 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
+
+**4.7, la barra di progresso non esisteva.** Il valore `reconnectionProgress` era scritto a dieci tappe durante l'attesa per l'avvio di VLC, e non era letto da nessuna parte: non in `lib/`, non nei test. Le dieci `notifyListeners` ricostruivano l'albero duecento volte al secondo per due secondi, e non mostravano nulla. Tolto il campo, il getter e il ciclo; la pausa di due secondi resta, perche' quella e' vera.
+
+**Da li' e' uscito un bug vero.** Il test che ho scritto per la rimozione ha fatto emergere `Bad state: StreamSink is bound to a stream` da `VlcService.dispose()`: chiudere una socket gia' distrutta lancia, e l'errore usciva da `dispose`, che non e' il posto giusto per far fallire lo smontaggio. `dispose` ora e' idempotente, mette a posto la socket prima di chiuderla, e `connect` su un servizio smontato viene rifiutato con un messaggio che dice il perche'.
 
 **6.1 e 6.2, quello che sembrava cosmetica era un costo.** Togliere i `print` era elencato come pulizia, perche' filtravano titoli di file e percorsi. La misura su `getPlaylist` ha mostrato che erano anche il lavoro piu' pesante dell'app: una riga per voce e una per chunk, con tutto il testo che finiva a schermo sul main isolate. Con il logger, `getPlaylist` su 6000 voci passa da 1057 ms a 582 ms ed e' piatto rispetto alla dimensione. La privacy era il motivo giusto, ma quello piccolo rispetto a questo.
 

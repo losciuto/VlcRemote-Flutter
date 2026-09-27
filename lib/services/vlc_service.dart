@@ -32,6 +32,9 @@ class VlcService {
   /// Tag usato nei log di questo servizio.
   static const String _tag = 'VlcService';
 
+  /// Vero dopo [dispose]: rende la pulizia sicura da ripetere.
+  bool _isDisposed = false;
+
   final Duration _playlistQuietPeriod = Duration(milliseconds: 500);
 
   // VLC può spezzare una risposta su più chunk TCP. Consideriamo la risposta
@@ -61,6 +64,14 @@ class VlcService {
 
   /// Connette al server VLC
   Future<bool> connect(String host, int port) async {
+    // Dopo dispose lo stream delle risposte e' chiuso: riaprire la connessione
+    // fallirebbe piu' avanti, dentro il listener, con un errore che non dice
+    // nulla. Meglio rifiutare qui, dove si capisce.
+    if (_isDisposed) {
+      AppLogger.w(_tag, 'connect su un servizio gia\' smontato: $host:$port');
+      return false;
+    }
+
     try {
       // Disconnetti se già connesso
       await disconnect();
@@ -658,10 +669,29 @@ class VlcService {
     }
   }
 
-  /// Pulisce le risorse
+  /// Pulisce le risorse.
+  ///
+  /// Sicura da chiamare piu' volte e anche quando la socket e' gia' stata
+  /// distrutta: chi chiude e' il provider, che puo' essere smontato dopo una
+  /// riconnessione, e a quel punto la socket precedente e' gia' stata chiusa
+  /// da `disconnect`. Senza questi controlli, `close()` su una socket gia'
+  /// distrutta lancia, e l'errore esce da `dispose`, che non e' il posto
+  /// giusto per far fallire lo smontaggio.
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+
     _socketSubscription?.cancel();
-    _socket?.close();
+    _socketSubscription = null;
+
+    final socket = _socket;
+    _socket = null;
+    try {
+      socket?.close();
+    } catch (e) {
+      AppLogger.d(_tag, 'Socket gia\' chiusa o non piu\' disponibile', e);
+    }
+
     _responseController.close();
     _isConnected = false;
   }
