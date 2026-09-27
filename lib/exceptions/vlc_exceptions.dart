@@ -55,3 +55,21 @@ class VlcParsingException extends VlcRemoteException {
         originalError,
       );
 }
+
+/// Lo storage sicuro di sistema non ha potuto salvare o cancellare un segreto.
+///
+/// Va propagata invece che essere stampata: se la scrittura fallisce e il chiamante
+/// non lo viene a sapere, la connessione risulta salvata mentre il segreto non
+/// esiste da nessuna parte, e al rilancio l'app chiede la password come se
+/// l'utente non l'avesse mai inserita.
+class SecretStoreException extends VlcRemoteException {
+  final String key;
+  final String operation;
+
+  SecretStoreException({
+    required this.key,
+    required this.operation,
+    String message = 'operazione di storage sicuro non riuscita',
+    dynamic originalError,
+  }) : super('Segreto "$key": $message ($operation)', originalError);
+}

@@ -1,5 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../exceptions/vlc_exceptions.dart';
+
 /// Archivio chiave-valore per i segreti.
 ///
 /// Espone un'interfaccia minimale [SecretStore] così i test possono usare
@@ -37,9 +39,17 @@ class SecureStorageService implements SecretStore {
       if (value != null) _cache[key] = value;
       return value;
     } catch (e) {
-      // Su alcune piattaforme (Linux senza keyring, Web senza HTTPS) la
-      // lettura può fallire. Non è un caso da interrompere: si prosegue
-      // senza segreto e l'utente dovrà reinserirlo.
+      // Qui l'errore non viene propagato, e la scelta e' deliberata: una
+      // lettura impossibile e' indistinguibile, per l'utente, da un segreto
+      // assente, e in entrambi i casi la conseguenza e' la stessa (chiedere
+      // la password). Propagare l'eccezione qui farebbe fallire il caricamento
+      // di tutte le connessioni su una macchina senza keyring, invece di
+      // lasciare usare quelle che non hanno segreti.
+      //
+      // Il rovescio e' che un errore di lettura non viene distinto da un
+      // segreto mancante: per questo _cache non viene toccata, cosi' un valore
+      // gia' letto nella sessione resta disponibile anche se il keyring si
+      // blocca a meta' esecuzione.
       print('[SecureStorage] Lettura di "$key" non riuscita: $e');
       return null;
     }
@@ -47,22 +57,35 @@ class SecureStorageService implements SecretStore {
 
   @override
   Future<void> write(String key, String value) async {
-    _cache[key] = value;
     try {
       await _storage.write(key: key, value: value);
     } catch (e) {
-      print('[SecureStorage] Scrittura di "$key" non riuscita: $e');
+      // La cache viene aggiornata solo dopo il successo: aggornarla prima
+      // farebbe leggere come salvato un segreto che sul disco non c'e', e la
+      // sessione apparentemente funzionante finirebbe al primo riavvio.
+      throw SecretStoreException(
+        key: key,
+        operation: 'write',
+        message: 'scrittura non riuscita, il segreto NON e\' stato salvato',
+        originalError: e,
+      );
     }
+    _cache[key] = value;
   }
 
   @override
   Future<void> delete(String key) async {
-    _cache.remove(key);
     try {
       await _storage.delete(key: key);
     } catch (e) {
-      print('[SecureStorage] Cancellazione di "$key" non riuscita: $e');
+      throw SecretStoreException(
+        key: key,
+        operation: 'delete',
+        message: 'cancellazione non riuscita, il segreto e\' ancora presente',
+        originalError: e,
+      );
     }
+    _cache.remove(key);
   }
 }
 
@@ -70,14 +93,39 @@ class SecureStorageService implements SecretStore {
 class InMemorySecretStore implements SecretStore {
   final Map<String, String> values = {};
 
+  /// Se è vero, [write] fallisce come farebbe uno store sicuro non
+  /// raggiungibile. Serve a provare che i chiamanti gestiscono il fallimento.
+  bool failWrites = false;
+
+  /// Come [failWrites], per [delete].
+  bool failDeletes = false;
+
   @override
   Future<String?> read(String key) async => values[key];
 
   @override
-  Future<void> write(String key, String value) async => values[key] = value;
+  Future<void> write(String key, String value) async {
+    if (failWrites) {
+      throw SecretStoreException(
+        key: key,
+        operation: 'write',
+        message: 'scrittura non riuscita, il segreto NON e\' stato salvato',
+      );
+    }
+    values[key] = value;
+  }
 
   @override
-  Future<void> delete(String key) async => values.remove(key);
+  Future<void> delete(String key) async {
+    if (failDeletes) {
+      throw SecretStoreException(
+        key: key,
+        operation: 'delete',
+        message: 'cancellazione non riuscita, il segreto e\' ancora presente',
+      );
+    }
+    values.remove(key);
+  }
 }
 
 /// Chiave dello store sicuro per un dato segreto di una connessione.

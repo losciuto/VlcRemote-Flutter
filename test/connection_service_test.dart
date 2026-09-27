@@ -278,5 +278,88 @@ void main() {
 
       expect(secrets.values, isEmpty);
     });
+
+    group('store sicuro che non funziona', () {
+      /// Prepara il servizio con uno store che fallisce su ogni scrittura, come
+      /// su una macchina senza keyring: il caso in cui la Fase 0 perdeva le
+      /// password dell'utente.
+      ///
+      /// Il flag va impostato dopo [initWith], che crea uno store nuovo: prima
+      /// verrebbe perso.
+      Future<void> initWithFailingStore(String json) async {
+        await initWith(json);
+        secrets.failWrites = true;
+      }
+
+      test('la migrazione NON cancella i segreti dalle preferenze', () async {
+        await initWithFailingStore(
+          jsonEncode([
+            {
+              ...validJson('1'),
+              'vlcPassword': 'vecchia-password',
+              'myPlaylistSecretKey': 'vecchia-chiave',
+            },
+          ]),
+        );
+
+        final connections = await service.getConnections();
+
+        // L'utente rivede le sue credenziali...
+        expect(connections.length, 1);
+        expect(connections.single.vlcPassword, 'vecchia-password');
+        expect(connections.single.myPlaylistSecretKey, 'vecchia-chiave');
+        // ...e il JSON le contiene ancora: la migrazione non è andata a buon
+        // fine, quindi non ha cancellato nulla. Se le avesse rimosse senza
+        // poterle spostare, la password sarebbe sparita senza rimedio.
+        expect(storedJson(), contains('vecchia-password'));
+        expect(storedJson(), contains('vecchia-chiave'));
+        expect(secrets.values, isEmpty);
+      });
+      test('salvare una connessione nuova fallisce invece di mentire', () async {
+        await initWithFailingStore('[]');
+
+        final ok = await service.saveConnection(
+          VlcConnection(
+            id: '1',
+            name: 'Sala',
+            ipAddress: '192.168.1.10',
+            port: 8080,
+            lastUsed: DateTime(2026, 9, 26),
+            vlcPassword: 'password-vlc',
+          ),
+        );
+
+        // Il risultato deve essere fallito: senza questo la UI direbbe "salvata"
+        // e la password si perderebbe al primo riavvio.
+        expect(ok, isFalse);
+        expect(await service.getConnections(), isEmpty);
+      });
+
+      test('un segreto non cancellabile non viene dato per rimosso', () async {
+        await initWith('[]');
+        await service.saveConnection(
+          VlcConnection(
+            id: '1',
+            name: 'Sala',
+            ipAddress: '192.168.1.10',
+            port: 8080,
+            lastUsed: DateTime(2026, 9, 26),
+            vlcPassword: 'password-vlc',
+          ),
+        );
+        expect(await service.getConnections(), hasLength(1));
+
+        secrets.failDeletes = true;
+        final ok = await service.saveConnection(
+          (await service.getConnections()).single.copyWith(name: 'Sala TV'),
+        );
+
+        // Se la cancellazione di un segreto non riesce, il salvataggio è
+        // dichiarato fallito e il JSON non viene riscritto: non si afferma
+        // che il segreto è stato rimosso mentre è ancora lì.
+        expect(ok, isFalse);
+        expect(storedJson(), contains('"name":"Sala"'));
+      });
+    });
   });
 }

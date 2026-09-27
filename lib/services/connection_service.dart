@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../exceptions/vlc_exceptions.dart';
 import '../models/vlc_connection.dart';
 import 'secure_storage_service.dart';
 
@@ -37,8 +38,11 @@ class ConnectionService {
       // Aggiungi la nuova connessione
       connections.add(connection);
 
-      // Salva tutte le connessioni: i segreti vanno nello store sicuro
-      return _persist(connections);
+      // Salva tutte le connessioni: i segreti vanno nello store sicuro.
+      // L'await è obbligatorio: `return _persist(...)` dentro un try non
+      // cattura l'errore asincrono, quindi il fallimento del negozio sicuro
+      // sfuggirebbe e arriverebbe come eccezione non gestita.
+      return await _persist(connections);
     } catch (e) {
       print('Errore durante il salvataggio della connessione: $e');
       return false;
@@ -83,11 +87,22 @@ class ConnectionService {
       }
 
       if (hasLegacySecrets) {
-        await _persist(connections);
-        print(
-          '[ConnectionService] Segreti migrati in storage sicuro '
-          '(${connections.length} connessioni)',
-        );
+        // La migrazione è un tentativo, non un prerequisito: se lo store sicuro
+        // non è disponibile i segreti restano nel JSON e l'app continua a
+        // funzionare. Lasciare che l'eccezione arrivi al catch esterno
+        // restituirebbe una lista vuota, cioè tutte le connessioni sparite.
+        try {
+          await _persist(connections);
+          print(
+            '[ConnectionService] Segreti migrati in storage sicuro '
+            '(${connections.length} connessioni)',
+          );
+        } on SecretStoreException catch (e) {
+          print(
+            '[ConnectionService] Migrazione dei segreti non riuscita, i '
+            'segreti restano in chiaro nelle preferenze: $e',
+          );
+        }
       }
 
       return connections;
@@ -132,6 +147,13 @@ class ConnectionService {
   }
 
   /// Scrive i segreti nello store sicuro e persiste il resto in chiaro.
+  ///
+  /// L'ordine è deliberato e va mantenuto: i segreti si scrivono **prima** del
+  /// JSON, quindi se lo store sicuro fallisce la [SecretStoreException]
+  /// interrompe il metodo e il JSON non viene mai riscritto. Senza questo
+  /// ordine, su una macchina senza keyring la migrazione cancellerebbe i
+  /// segreti da SharedPreferences senza essere riuscita a spostarli: la
+  /// password dell'utente sparirebbe senza lasciare traccia.
   Future<bool> _persist(List<VlcConnection> connections) async {
     for (final connection in connections) {
       for (final entry in _secretEntries(connection)) {
@@ -193,7 +215,7 @@ class ConnectionService {
         }
       }
 
-      return _persist(connections);
+      return await _persist(connections);
     } catch (e) {
       print('Errore durante l\'eliminazione della connessione: $e');
       return false;
@@ -212,7 +234,7 @@ class ConnectionService {
         lastUsed: DateTime.now(),
       );
 
-      return _persist(connections);
+      return await _persist(connections);
     } catch (e) {
       print('Errore durante l\'aggiornamento della data di utilizzo: $e');
       return false;
@@ -231,7 +253,7 @@ class ConnectionService {
         isFavorite: !connections[index].isFavorite,
       );
 
-      return _persist(connections);
+      return await _persist(connections);
     } catch (e) {
       print('Errore durante il toggle del preferito: $e');
       return false;
