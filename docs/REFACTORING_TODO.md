@@ -89,22 +89,24 @@ Nota per il rilascio: l'installazione in-app di MyPlaylist resta inactive finche
 
 **Test in circolazione** (da 17 a **109** dopo Fase 0, 1.10 e 3.16): `vlc_service_test.dart` (19), `connection_service_test.dart` (18), `my_playlist_service_test.dart` (14), `secure_storage_service_test.dart` (13), `update_service_test.dart` (12), `update_dialog_test.dart` (10), `vlc_http_service_test.dart` (6), `vlc_provider_test.dart` (2), piu' i 16 preesistenti su modelli e widget. Infrastruttura di test: `test/support/fake_vlc_server.dart`, `fake_my_playlist_server.dart` e `fake_release_server.dart` (aggiunto in Fase 0).
 
-Copertura per file, per capire dove il debito si nasconde (misurata il 27/09/2026):
+Copertura per file, misurata il 27/09/2026 con un `lcov.info` pulito. Serve a distinguere il debito della UI da quello dei servizi: la colonna di sinistra e' il codice di cui mi fido, quella di destra il debito da affrontare.
 
 | Coperto bene | % | Da colmare | % |
 |---|---|---|---|
 | `filter_settings` | 100.0 | `app_config` | 0.0 |
-| `vlc_connection` | 93.7 | `update_dialog` | 0.0 (77 righe, riscritte in Fase 0) |
-| `main` | 91.3 | `my_playlist_panel` | 0.3 |
-| `my_playlist_service` | 86.2 | `connection_dialog` | 0.4 |
-| `vlc_service` | 83.6 | `playlist_panel` | 0.7 |
-| `update_service` | 68.4 | `control_panel` | 1.0 |
-| `connection_service` | 66.4 | `vlc_provider` | 7.2 |
-| | | `secure_storage_service` | 88.0 |
+| `secure_storage_service` | 96.2 | `my_playlist_panel` | 0.3 |
+| `vlc_connection` | 93.7 | `connection_dialog` | 0.4 |
+| `main` | 91.3 | `playlist_panel` | 0.7 |
+| `my_playlist_service` | 86.2 | `control_panel` | 1.0 |
+| `vlc_service` | 83.6 | `now_playing_card` | 4.5 |
+| `vlc_status` | 78.3 | `vlc_provider` | 7.2 |
+| `playlist_item` | 73.9 | `vlc_http_service` | 21.6 |
+| `update_dialog` | 73.1 | `settings_service` | 33.3 |
+| `update_service` | 68.6 | `home_screen` | 47.0 |
+| `connection_service` | 67.8 | | |
+| `vlc_exceptions` | 64.3 | | |
 
-**Copertura**: **33.9%** delle righe (764/2256), misurata su un `coverage/lcov.info` pulito.
-
-Attenzione a come si legge questo numero: le cifre 26.3% e 23.2% che erano in questa tabella fino alla 3.16 **erano sbagliate**. `lcov.info` si appende a ogni `flutter test --coverage` senza venire cancellato, quindi la somma contava due esecuzioni sovrapposte (2117 + 828 righe) invece del totale reale del sorgente. La lezione operativa: rimuovere `coverage/` prima di ogni misura, e fidarsi del numero solo se i file in `SF:` corrispondono a quelli in `lib/`.
+`vlc_http_service` al 21.6% e `vlc_provider` al 7.2% sono i due buchi che pesano di piu' fra i servizi: entrambi coprono I/O e stato, e sono lapriorita' della Fase 2. `home_screen` al 47% e' il punto migliore in cui iniziare i test di widget, perche' e' gia' a meta' strada.
 
 **Risolto — 1.10 e 3.15.** Il difetto era piu' grave di una segnalazione mancante. Con il comportamento precedente, su una macchina senza keyring la migrazione dei segreti **li cancellava da SharedPreferences senza riuscire a spostarli**: la password dell'utente spariva senza rimedio. Tre correzioni:
 
