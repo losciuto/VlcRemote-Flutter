@@ -153,7 +153,7 @@ class _SmartFilterDialogState extends State<SmartFilterDialog> {
         children: [
           Icon(Icons.filter_alt, color: Colors.blue),
           SizedBox(width: 12),
-          Text('Smart Playlist Filter'),
+          Text('Filtro smart playlist'),
         ],
       ),
       content: SingleChildScrollView(
@@ -305,7 +305,7 @@ class _SmartFilterDialogState extends State<SmartFilterDialog> {
       actions: [
         TextButton(
           onPressed: _azzera,
-          child: const Text('Reset', style: TextStyle(color: Colors.red)),
+          child: const Text('Azzera', style: TextStyle(color: Colors.red)),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context),

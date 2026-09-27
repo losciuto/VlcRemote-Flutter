@@ -150,6 +150,12 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**6.6, i leak in inglese erano quasi tutti su azioni distruttive.** Il peggiore era il dialogo di conferza per chiudere tutte le istanze di VLC sul PC remoto: titolo, testo e pulsanti in inglese, mentre il pulsante che lo apre diceva in italiano "Killa tutte le istanze VLC". Su un'azione che interrompe la riproduzione dal lontano, un utente che non legge l'inglese poteva confermare per abitudine. Ora e' tutto italiano e coerente col proprio pulsante.
+
+Coi testi "Fullscreen", "Smart Playlist Filter" e "Reset" nello stesso dialogo di filtro, accanto ad "Annulla". "Smart Actions" l'ho lasciato: e' un nome di funzionalita' e compare uguale in due punti, quindi e' una scelta e non una dimenticanza.
+
+Il resto dell'item resta aperto e merita una decisione, non un lavoro di sgraffio: `intl` e' gia' dipendenza ma non c'e' alcun `l10n`, e ogni testo e' scritto a mano. Estrarre le stringhe in un catalogo dentro il progetto e' una mezz'ora di diff meccanico; passare ad `arb` con `flutter gen-l10n` significa toccare ogni schermata e scegliere se l'inglese diventa una lingua supportata davvero. Sono due lavori diversi, e quello grosso cambia il comportamento dell'app per chi non parla italiano: serve sapere se lo si vuole.
+
 **5.9, la versione dell'app era in due posti, e quello sbagliato era quello che si leggeva.** `AppConfig` serviva per una cosa sola: mostrare la versione nel dialogo delle informazioni. Tutto il resto del file erano quaranta righe di costanti mai usate, e la versione era scritta a mano mentre `pubspec.yaml` era gia' su 2.7.5: l'info diceva 2.7.4, quindi l'utente vedeva una versione che non era la sua.
 
 Eliminato il file. La versione ora arriva da `pubspec.yaml` con `package_info_plus`, che e' gia' una dipendenza e che il controllo degli aggiornamenti stava gia' leggendo: due letture dello stesso valore che non possono divergere. Il file era anche l'unica cosa che la tabella della copertura indicasse come "da colmare", e non esiste piu'.
@@ -245,7 +251,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 6.3 | Rimuovere codice morto: 16 costanti mai usate, non 9 | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** |
 | 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
 | 6.5 | `docs/CRITICAL_FIXES.md` eliminato: i quattro fix che proponeva sono nel codice, l'unico che mancava era completato adesso | | `docs/CRITICAL_FIXES.md` | Basso | ok | **fatto** |
-| 6.6 | `intl` è già dipendenza ma non c'è localizzazione: testo hardcoded IT, con qualche leak EN ("Kill all VLC instances") | tutto `lib/` | Basso | ok | da fare |
+| 6.6 | `intl` e' gia' dipendenza ma non c'e' localizzazione: i leak in inglese corretti, il catalogo delle stringhe richiede una decisione | vari | Medio | ok | **parziale** | tutto `lib/` | Basso | ok | da fare |
 | 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali (corpo protetto e 4 tooltip aggiunti; i `Semantics` restano da fare) | `control_panel.dart:112-118,189-196` | Basso | ok | **parziale** |
 | 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |
 

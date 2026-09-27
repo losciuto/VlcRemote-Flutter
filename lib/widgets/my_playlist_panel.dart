@@ -576,14 +576,15 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Action'),
+        title: const Text('Conferma azione'),
         content: const Text(
-          'This will force-stop all VLC instances on the remote PC. Are you sure?',
+          'Verranno chiuse in modo forzato tutte le istanze di VLC sul '
+          'PC remoto. Sei sicuro?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('CANCEL'),
+            child: const Text('Annulla'),
           ),
           TextButton(
             onPressed: () {
@@ -591,7 +592,7 @@ class _MyPlaylistPanelState extends State<MyPlaylistPanel> {
               provider.killAllRemoteVlc();
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('KILL ALL'),
+            child: const Text('Killa tutte'),
           ),
         ],
       ),

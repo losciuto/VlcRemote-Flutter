@@ -189,7 +189,7 @@ class _ControlPanelState extends State<ControlPanel> {
                   child: OutlinedButton.icon(
                     onPressed: provider.toggleFullscreen,
                     icon: const Icon(Icons.fullscreen),
-                    label: const Text('Fullscreen'),
+                    label: const Text('Schermo intero'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),

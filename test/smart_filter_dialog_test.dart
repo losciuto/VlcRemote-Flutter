@@ -135,13 +135,13 @@ void main() {
       expect(salvati.limit, 7);
     });
 
-    testWidgets('"Reset" svuota i campi e i filtri salvati', (tester) async {
+    testWidgets('"Azzera" svuota i campi e i filtri salvati', (tester) async {
       await apriDialogo(
         tester,
         last: FilterSettings(genres: ['Azione'], limit: 25),
       );
 
-      await tester.tap(find.text('Reset'));
+      await tester.tap(find.text('Azzera'));
       await tester.pumpAndSettle();
 
       expect(campo(tester, 'Generi').text, isEmpty);
