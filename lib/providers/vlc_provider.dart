@@ -175,6 +175,19 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     _errorMessage = null;
     notifyListeners();
 
+    // La connessione scelta viene registrata **prima** di interrogare VLC, e
+    // non solo quando l'interrogazione va a buon fine. MyPlaylist e' un server
+    // a se' stante, con indirizzo, porta e chiave propri: se VLC non
+    // risponde, le sue funzioni devono restare utilizzabili lo stesso.
+    //
+    // Registrando la connessione solo dopo il successo di VLC, un VLC
+    // irraggiungibile rendeva MyPlaylist irraggiungibile a cascata, perche'
+    // ogni comando MyPlaylist legge i suoi parametri da qui. I due problemi
+    // si mascheravano a vicenda: sembrava un guasto di MyPlaylist, e non si
+    // capiva che VLC era fermo.
+    _currentConnection = connection;
+    await _connectionService.saveLastConnectionId(connection.id);
+
     try {
       // Azzeriamo la configurazione HTTP precedente: se la nuova connessione
       // non ha password (o fallisce) il polling non deve interrogare il vecchio
@@ -187,9 +200,6 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
       );
 
       if (success) {
-        _currentConnection = connection;
-        await _connectionService.saveLastConnectionId(connection.id);
-
         // Configura il servizio HTTP se la password è presente
         if (connection.vlcPassword != null &&
             connection.vlcPassword!.isNotEmpty) {
@@ -212,8 +222,12 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
         notifyListeners();
         return true;
       } else {
+        // Il messaggio nomina VLC perche' e' VLC a essere irraggiungibile:
+        // la connessione resta registrata, quindi MyPlaylist continua a
+        // funzionare e non c'e' motivo di far credere il contrario.
         _errorMessage =
-            'Impossibile connettersi a ${connection.ipAddress}:${connection.port}';
+            'Impossibile connettersi a VLC su '
+            '${connection.ipAddress}:${connection.port}';
         _isConnecting = false;
         notifyListeners();
         return false;

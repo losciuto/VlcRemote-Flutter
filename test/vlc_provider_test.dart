@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +38,61 @@ void main() {
 
     expect(provider.isConnected, isFalse);
     expect(provider.isMyPlaylistBusy, isFalse);
+  });
+
+  group('MyPlaylist indipendente da VLC', () {
+    const secretKey = 'my_default_secret_key_32chars_long';
+
+    test('la connessione resta registrata se VLC non risponde', () async {
+      // MyPlaylist e' un server a se' stante: se VLC e' fermo, le sue funzioni
+      // devono restare utilizzabili lo stesso. Registrando la connessione solo
+      // dopo il successo di VLC, un VLC irraggiungibile rendeva MyPlaylist
+      // irraggiungibile a cascata, e i due guasti si mascheravano a vicenda.
+      SharedPreferences.setMockInitialValues({});
+      final mp = await FakeMyPlaylistServer.start(
+        secretKey,
+        responder: (command, args) =>
+            FakeMyPlaylistServer.defaultResponse(command: command),
+      );
+      addTearDown(mp.close);
+
+      // Porta mai aperta: la connessione a VLC viene rifiutata.
+      final chiusa = await ServerSocket.bind('127.0.0.1', 0);
+      final portaChiusa = chiusa.port;
+      await chiusa.close();
+
+      final provider = VlcProvider(
+        vlcService: VlcService(),
+        connectionService: ConnectionService(secrets: InMemorySecretStore()),
+      );
+      addTearDown(provider.dispose);
+
+      final ok = await provider.connect(
+        VlcConnection(
+          id: '1',
+          name: 'Sala',
+          ipAddress: '127.0.0.1',
+          port: portaChiusa,
+          myPlaylistIp: mp.host,
+          myPlaylistPort: mp.port,
+          myPlaylistSecretKey: secretKey,
+          lastUsed: DateTime(2026, 9, 27),
+        ),
+      );
+
+      expect(ok, isFalse, reason: 'VLC non risponde, il risultato lo dice');
+      expect(provider.isConnected, isFalse);
+      expect(
+        provider.currentConnection,
+        isNotNull,
+        reason: 'la connessione scelta deve restare registrata',
+      );
+      expect(
+        provider.isMyPlaylistConfigured,
+        isTrue,
+        reason: 'MyPlaylist deve restare utilizzabile anche senza VLC',
+      );
+    });
   });
 
   group('riconnessione dopo un comando MyPlaylist (4.7)', () {
