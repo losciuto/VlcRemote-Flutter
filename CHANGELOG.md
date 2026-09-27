@@ -30,14 +30,24 @@ stessi pacchetti, stessi comandi, stessa chiave.
 - **I comandi di sistema non stanno piu' nel provider**, e nemmeno la sonda
   di MyPlaylist: il provider non usa piu' `dart:io` ed e' testabile senza un
   sistema operativo sotto.
-- **Il dialogo dei filtri e' un widget a se'** che possiede i suoi campi.
+- **Le risposte MyPlaylist non dipendono piu' dalla chiusura della socket**:
+  con un server che non chiude, un messaggio gia' arrivato e valido veniva
+  scartato e tornava un errore dopo 10 secondi. Ora arriva in 31 ms.
 - **Le costanti inutilizzate sono state usate, non cancellate**: erano gia' la
   risposta a numeri scritti a mano altrove, incluso un `5` che avrebbe
   continuato a mentire se il ritmo del polling fosse cambiato.
+- **Dialogi estratti in file propri**: filtro, anteprima e barra di stato.
+  `my_playlist_panel.dart` da 865 a 364 righe, `home_screen.dart` da 581 a 458.
+- **La versione arriva da `pubspec.yaml`**: era scritta in due posti e il
+  dialogo delle informazioni mostrava 2.7.4 quando l'app era 2.7.5.
+- **Testi in italiano**: il dialogo che ferma VLC sul PC remoto era in
+  inglese, su un'azione distruttiva.
 
 ### Removed
 - Dieci ricostruzioni dell'albero che non mostravano nulla: il valore del
   progresso della riconnessione non era letto da nessuna parte.
+- `lib/config/app_config.dart`: quaranta righe di costanti mai usate, delle
+  quali una sola contava, ed era quella sbagliata.
 - `docs/CRITICAL_FIXES.md`: quattro fix gia' applicati, con numeri di riga
   invecchiati. L'unico ancora mancante, la validazione degli IP, e' stato
   completato.
