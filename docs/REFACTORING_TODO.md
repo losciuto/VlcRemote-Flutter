@@ -150,6 +150,10 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**5.1, la prima parte ha eliminato una fuga di risorse.** Il dialogo dei filtri creava nove `TextEditingController` nel metodo che lo apriva e non li liberava mai: ogni apertura ne lasciava nove in giro, ognuno con i suoi listener. Ora e' un `State` che li crea in `initState` e li distruisce in `dispose`, e il `StatefulBuilder` che serviva solo per chiamare `setState` non serve piu'. Il file passa da 865 a 599 righe.
+
+Un test lo verifica davvero invece di fidarsi: chiude il dialogo, prende un controller dall'albero e prova ad aggiungere un listener. Su un controller distrutto questo lancia, ed e' esattamente cio' che deve succedere. Tolta la riga che lo distrugge, il test fallisce.
+
 **4.1 e' stata scartata dopo aver misurato il costo reale.** Con l'albero che ascolta il provider (icona nella AppBar, corpo con il pannello dei comandi, FAB), una ricostruzione completa costa **0,24 ms**. Il polling gira una volta al secondo, quindi si tratta di 0,24 ms al secondo: invisibile.
 
 La correzione proposta, `Selector` al posto dei `Consumer` grossolani, e' stata implementata e misurata a parte: porta 0,24 ms a 0,21 ms. Sono 25 microsecondi per notifica, il 10% di un costo gia' invisibile. Non vale la pena ristrutturare la UI per questo, e i `Consumer` sono piu' facili da leggere.
@@ -182,7 +186,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 5.1 | Scomporre `my_playlist_panel.dart` (850 righe, 3 dialog enormi inline, 10 `TextEditingController` creati per apertura senza dispose) | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | da fare |
+| 5.1 | Scomporre `my_playlist_panel.dart`: il dialogo dei filtri e' gia' stato estratto (865 -> 599 righe), restano i dialog di anteprima e di conferma | `my_playlist_panel.dart` | `my_playlist_panel.dart:305-579,581-823` | Alto | ok | **parziale** |
 | 5.2 | Scomporre `connection_dialog.dart` (641 righe, build da 290 righe) | `connection_dialog.dart:70-360` | Alto | ok | da fare |
 | 5.3 | Scomporre `home_screen.dart` (554 righe, `_buildMainContent` da 120) | `home_screen.dart:234-356` | Medio | ok | da fare |
 | 5.4 | Dependency injection dei servizi (oggi `final` creati dentro il provider) | `vlc_provider.dart` | Medio | ok | **fatto** (sblocca i test sul provider connesso) |
