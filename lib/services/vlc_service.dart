@@ -48,7 +48,8 @@ class VlcService {
   int? _currentPort;
   bool _isConnected = false;
 
-  final int _timeout = 2000; // timeout in millisecondi
+  /// Timeout per una risposta di VLC.
+  final int _timeout = AppConstants.connectionTimeoutMs;
 
   /// Stream delle risposte ricevute da VLC
   Stream<String> get responseStream => _responseController.stream;
@@ -450,7 +451,15 @@ class VlcService {
 
     int? volumePercent;
     if (rawVolume != null) {
-      volumePercent = (rawVolume * 100.0 / 256.0).round().clamp(0, 100);
+      // VLC ragiona da 0 a 256, l'interfaccia da 0 a 100: i due estremi sono
+      // in AppConstants perche' il fattore di conversione e' quello che
+      // cambia, non la divisione.
+      volumePercent =
+          (rawVolume *
+                  AppConstants.maxVolumePercent /
+                  AppConstants.vlcVolumeMax)
+              .round()
+              .clamp(0, AppConstants.maxVolumePercent);
     }
 
     // 'status' riporta lo stato solo se un media e' caricato. Quando la riga

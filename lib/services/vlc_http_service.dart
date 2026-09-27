@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
+import '../constants/app_constants.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
 import '../utils/app_logger.dart';
@@ -92,7 +93,9 @@ class VlcHttpService {
     try {
       final response = await _client
           .get(_getUri('/requests/status.xml'), headers: _getHeaders())
-          .timeout(const Duration(seconds: 2));
+          .timeout(
+            const Duration(milliseconds: AppConstants.connectionTimeoutMs),
+          );
 
       if (response.statusCode == 200) {
         final document = XmlDocument.parse(response.body);
@@ -145,7 +148,13 @@ class VlcHttpService {
           nowPlaying: title,
           currentTime: time,
           totalTime: length,
-          volume: (volume * 100 / 256).round().clamp(0, 100),
+          // Stessa conversione di `VlcService.getStatus`: VLC va da 0 a 256.
+          volume:
+              (volume *
+                      AppConstants.maxVolumePercent /
+                      AppConstants.vlcVolumeMax)
+                  .round()
+                  .clamp(0, AppConstants.maxVolumePercent),
           isPlaying: state == 'playing',
           isFullscreen: fullscreen,
           plot: plot,
@@ -220,7 +229,9 @@ class VlcHttpService {
 
       final response = await _client
           .get(uri, headers: _getHeaders())
-          .timeout(const Duration(seconds: 2));
+          .timeout(
+            const Duration(milliseconds: AppConstants.connectionTimeoutMs),
+          );
 
       return response.statusCode == 200;
     } catch (e) {

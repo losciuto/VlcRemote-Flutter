@@ -150,6 +150,14 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | **fatto** |
 
+**6.3, la meta' delle costanti "morte" era la risposta giusta a un numero magico.** Le costanti mai usate erano 16, non 9. Nove erano un catalogo di messaggi in italiano che nessuno leggeva e che la localizzazione (6.6) rendera' inutile: cancellate. Le altre sette no: erano gia' la risposta giusta a numeri scritti a mano altrove, e la domanda vera non era "sono inutilizzate" ma "perche' il numero e' ancora li'".
+
+I timeout erano il caso peggiore: `VlcService` aveva `final int _timeout = 2000` e `AppConstants.connectionTimeoutMs` valeva 2000. Due numeri uguali in due posti, con quello giusto ignorato. Idem la conversione del volume, che scriveva `100 / 256` in due servizi diversi. Ora i numeri hanno un nome solo e le conversioni usano gli estremi di `AppConstants`, cosi' se VLC cambiasse scala si cambia in un posto.
+
+Il `5` del controllo periodico era il peggiore di tutti, perche' era invisibile: `timer.tick % 5` con un timer da 1000 ms e una costante `playlistRefreshMs` da 5000 che nessuno usava. Se il ritmo del polling fosse cambiato, il `5` avrebbe continuato a mentire. Ora i giri si ricavano dalle due costanti.
+
+Una costante era un duplicato (`retryDelayMs` e `reconnectBackoffBaseMs` valgono entrambe 1000) e una non corrispondeva a niente (`seekDebounceMs`, il pannello usa un margine di 2 s): cancellate. Dopo questo, ogni costante in `AppConstants` e' usata da almeno un punto.
+
 **5.2, lo stesso difetto di 5.1 anche qui.** Il dialogo di connessione aveva sette campi e ne distruggeva quattro: le tre righe per i campi di MyPlaylist non c'erano, quindi ogni apertura lasciava tre controller vivi, con i loro listener, per tutta la sessione. Il test copre tutti e sette e non solo qualcuno, perche' il difetto era proprio guardare i primi quattro e non gli altri tre.
 
 **5.5, spostare il comando ha reso testabile la parte piu' pericolosa del provider.** `Process.run` stava dentro `killLocalVlcIfSameMachine`, cioe' nel provider. Ora c'e' `LocalProcessService`, che espone solo il codice di uscita: `dart:io` non attraversa la firma e chi chiama non deve saperne qualcosa. Il servizio e' iniettabile, quindi la logica si puo' provare senza un sistema operativo sotto.
@@ -210,7 +218,7 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 |---|---|---|---|---|---|
 | 6.1 | Togliere i 42 `print` di produzione che filtrano titoli e percorsi dei tuoi file | `vlc_service.dart:77-79,431-434,527` | Alto | ok | **fatto** |
 | 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | **fatto** |
-| 6.3 | Rimuovere codice morto: `getVolume()` (mai chiamato), `_seekDebounceTimer` (mai assegnato), 9 costanti mai usate | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** per `getVolume` e `_seekDebounceTimer`; resta ripulire le costanti |
+| 6.3 | Rimuovere codice morto: 16 costanti mai usate, non 9 | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** |
 | 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
 | 6.5 | Correggere o eliminare `docs/CRITICAL_FIXES.md` (cita righe obsolete, propone fix già applicati) | `docs/CRITICAL_FIXES.md` | Basso | ok | da fare |
 | 6.6 | `intl` è già dipendenza ma non c'è localizzazione: testo hardcoded IT, con qualche leak EN ("Kill all VLC instances") | tutto `lib/` | Basso | ok | da fare |

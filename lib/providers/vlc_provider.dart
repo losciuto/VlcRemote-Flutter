@@ -249,8 +249,13 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
 
         try {
           await _updateStatus();
-          // Ogni 5 iterazioni (circa 5 secondi), controlla anche MyPlaylist
-          if (timer.tick % 5 == 0) {
+          // Ogni `playlistRefreshMs`, controlla anche MyPlaylist. Il numero di
+          // giri si ricava dalle due costanti invece di scrivere 5: se il
+          // ritmo del polling cambiasse, il 5 resterebbe li' a dirgli una
+          // cosa falsa.
+          final ogniQuanteGiri =
+              AppConstants.playlistRefreshMs ~/ AppConstants.statusRefreshMs;
+          if (timer.tick % ogniQuanteGiri == 0) {
             await _probeMyPlaylist();
           }
           _statusUpdateRetries = 0; // Reset su successo

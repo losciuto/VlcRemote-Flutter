@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
+import '../constants/app_constants.dart';
 
 class MyPlaylistService {
   /// Verifica che il server risponda, senza inviare nessun comando.
@@ -101,7 +102,7 @@ class MyPlaylistService {
       socket = await Socket.connect(
         host,
         port,
-        timeout: const Duration(seconds: 5),
+        timeout: const Duration(milliseconds: AppConstants.myPlaylistTimeoutMs),
       );
 
       // Invio della lunghezza del messaggio (4 byte) + il messaggio stesso

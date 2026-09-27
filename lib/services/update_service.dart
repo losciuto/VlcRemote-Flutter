@@ -108,7 +108,9 @@ class UpdateService {
 
       final response = await http
           .get(Uri.parse(_repoUrl))
-          .timeout(const Duration(seconds: 5));
+          .timeout(
+            const Duration(milliseconds: AppConstants.updateCheckTimeoutMs),
+          );
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);

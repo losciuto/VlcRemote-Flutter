@@ -1,22 +1,6 @@
 /// Costanti utilizzate in tutta l'applicazione
 class AppConstants {
   // Messaggi di errore
-  static const String errorConnectionFailed = 'Impossibile connettersi a VLC';
-  static const String errorConnectionTimeout = 'Timeout durante la connessione';
-  static const String errorCommandFailed = 'Invio del comando non riuscito';
-  static const String errorInvalidInput = 'Input non valido';
-  static const String errorUnknown = 'Errore sconosciuto';
-
-  // Messaggi di successo
-  static const String successConnectionEstablished = 'Connesso a VLC';
-  static const String successDisconnected = 'Disconnesso da VLC';
-  static const String successCommandSent = 'Comando inviato';
-
-  // Label e testi UI
-  static const String appTitle = 'VLC Remote';
-  static const String appDescription =
-      'Telecomando remoto per VLC Media Player';
-
   // Nomi dei comandi VLC
   static const Map<String, String> vlcCommands = {
     'play': 'Riproduci',
@@ -56,6 +40,7 @@ class AppConstants {
   static const int connectionTimeoutMs = 2000;
   static const int commandTimeoutMs = 1500;
   static const int myPlaylistTimeoutMs = 5000;
+  static const int updateCheckTimeoutMs = 5000;
 
   // Aggiornamento
   // Suffix dell'asset che contiene l'impronta SHA-256 dell'APK. La sua
@@ -69,11 +54,9 @@ class AppConstants {
 
   // Retry & Resilience
   static const int maxRetries = 3;
-  static const int retryDelayMs = 1000;
   static const int reconnectBackoffBaseMs = 1000;
   static const int reconnectBackoffMaxMs = 10000;
 
   // Debouncing
   static const int volumeDebounceMs = 300;
-  static const int seekDebounceMs = 500;
 }
