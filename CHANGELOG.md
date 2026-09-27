@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Non rilasciato]
+
+Lavori di rifinitura, nessuno dei quali cambia il protocollo con MyPlaylist:
+stessi pacchetti, stessi comandi, stessa chiave.
+
+### Fixed
+- **Segreti non piu' persi**: `SecureStorageService` non nasconde piu' gli
+  errori di scrittura. Prima, un secure storage non disponibile faceva perdere
+  le password salvate senza dirlo, e i segreti finivano nel JSON in chiaro.
+- **Aggiornamenti verificati**: un binario senza checksum non viene piu'
+  eseguito, e il download va su file temporaneo con rinomina atomica.
+- **Dispose**: i nove campi del dialogo filtri e i tre campi MyPlaylist del
+  dialogo di connessione non venivano distrutti. Ogni apertura lasciava
+  controller vivi con i loro listener per tutta la sessione.
+- **`VlcService.dispose` non era sicuro da ripetere** e chiudere una socket gia'
+  distrutta faceva fallire lo smontaggio, per esempio dopo una riconnessione.
+- **Indirizzi IP**: la validazione contava quattro parti e basta, quindi
+  `999.999.999.999` passava. Ora controlla gli ottetti, e i campi MyPlaylist
+  (IP, porta, chiave) non erano affatto validati.
+
+### Changed
+- **Log con livelli** al posto dei `print` sparsi. Non era solo pulizia: una
+  riga per voce in playlist e una per ogni chunk costavano piu' del lavoro che
+  le generava. `getPlaylist` su 6000 voci passa da 1057 ms a 582 ms ed e'
+  piatto rispetto alla dimensione.
+- **I comandi di sistema non stanno piu' nel provider**, e nemmeno la sonda
+  di MyPlaylist: il provider non usa piu' `dart:io` ed e' testabile senza un
+  sistema operativo sotto.
+- **Il dialogo dei filtri e' un widget a se'** che possiede i suoi campi.
+- **Le costanti inutilizzate sono state usate, non cancellate**: erano gia' la
+  risposta a numeri scritti a mano altrove, incluso un `5` che avrebbe
+  continuato a mentire se il ritmo del polling fosse cambiato.
+
+### Removed
+- Dieci ricostruzioni dell'albero che non mostravano nulla: il valore del
+  progresso della riconnessione non era letto da nessuna parte.
+- `docs/CRITICAL_FIXES.md`: quattro fix gia' applicati, con numeri di riga
+  invecchiati. L'unico ancora mancante, la validazione degli IP, e' stato
+  completato.
 
 ## [2.7.5] - 2026-09-25
 
