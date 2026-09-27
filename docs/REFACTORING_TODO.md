@@ -150,6 +150,8 @@ I 5 test nuovi sono stati verificati col codice precedente: falliscono senza il 
 | 4.6 | Spostare parsing XML/JSON pesanti fuori dal main isolate | `vlc_http_service.dart`, `my_playlist_service.dart` | **Molto basso** (era Medio) | ok | **non serve** |
 | 4.7 | Fermare la barra di progresso animata da 10 `notifyListeners()` in 2 s | `vlc_provider.dart:590-598` | Basso | ok | da fare |
 
+**6.1 e 6.2, quello che sembrava cosmetica era un costo.** Togliere i `print` era elencato come pulizia, perche' filtravano titoli di file e percorsi. La misura su `getPlaylist` ha mostrato che erano anche il lavoro piu' pesante dell'app: una riga per voce e una per chunk, con tutto il testo che finiva a schermo sul main isolate. Con il logger, `getPlaylist` su 6000 voci passa da 1057 ms a 582 ms ed e' piatto rispetto alla dimensione. La privacy era il motivo giusto, ma quello piccolo rispetto a questo.
+
 **4.6 e' caduta perche' il problema non era dove sembrava.** Spostare il parsing fuori dal main isolate e' stato scartato dopo aver misurato il costo reale della lettura di una playlist: togliendo i `print`, che erano l'unica parte del lavoro che cresceva con i dati, il tempo e' diventato **575 ms a 1000 voci, 576 ms a 3000, 582 ms a 6000**. Praticamente piatto. Il parsing in se' non blocca il main isolate: il lavoro vero era stampare.
 
 Restare con un `compute()` avrebbe spostato in un altro isolate circa trenta millisecondi, al costo di un isolate da avviare, della stringa da copiare due volte e del risultato da rimandare indietro. Il guadagno era reale solo per playlist enormi, e a quel punto il costo e' tornerebbe con la copia.
@@ -182,8 +184,8 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 
 | # | Cosa | File | Sev | Impatto server | Stato |
 |---|---|---|---|---|---|
-| 6.1 | Togliere i 42 `print` di produzione che filtrano titoli e percorsi dei tuoi file | `vlc_service.dart:77-79,431-434,527` | Alto | ok | da fare |
-| 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | da fare |
+| 6.1 | Togliere i 42 `print` di produzione che filtrano titoli e percorsi dei tuoi file | `vlc_service.dart:77-79,431-434,527` | Alto | ok | **fatto** |
+| 6.2 | Conditionali `kDebugMode` o logger strutturato al posto di `print` | ovunque in `lib/` | Medio | ok | **fatto** |
 | 6.3 | Rimuovere codice morto: `getVolume()` (mai chiamato), `_seekDebounceTimer` (mai assegnato), 9 costanti mai usate | `vlc_service.dart`, `vlc_provider.dart`, `app_constants.dart` | Basso | ok | **fatto** per `getVolume` e `_seekDebounceTimer`; resta ripulire le costanti |
 | 6.4 | Allineare le versioni: README dice 2.7.4 (Marzo 2026), `pubspec` 2.7.4+1, CHANGELOG documenta 2.7.5 (25/09/2026) | `README.md:350`, `pubspec.yaml:5` | Basso | ok | **decisione** (D9) |
 | 6.5 | Correggere o eliminare `docs/CRITICAL_FIXES.md` (cita righe obsolete, propone fix già applicati) | `docs/CRITICAL_FIXES.md` | Basso | ok | da fare |

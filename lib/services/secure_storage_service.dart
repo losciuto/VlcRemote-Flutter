@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../exceptions/vlc_exceptions.dart';
+import '../utils/app_logger.dart';
 
 /// Archivio chiave-valore per i segreti.
 ///
@@ -24,6 +25,8 @@ abstract class SecretStore {
 /// - Linux: libsecret (GNOME Keyring) — richiede `libsecret-1-dev`
 /// - Windows / macOS: credential store del sistema
 class SecureStorageService implements SecretStore {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'SecureStorage';
   SecureStorageService({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage();
 
@@ -50,7 +53,7 @@ class SecureStorageService implements SecretStore {
       // segreto mancante: per questo _cache non viene toccata, cosi' un valore
       // gia' letto nella sessione resta disponibile anche se il keyring si
       // blocca a meta' esecuzione.
-      print('[SecureStorage] Lettura di "$key" non riuscita: $e');
+      AppLogger.w(_tag, 'Lettura di "$key" non riuscita', e);
       return null;
     }
   }

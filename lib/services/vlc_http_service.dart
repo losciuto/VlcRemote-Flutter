@@ -3,10 +3,14 @@ import 'package:http/http.dart' as http;
 import 'package:xml/xml.dart';
 import '../models/vlc_status.dart';
 import '../models/playlist_item.dart';
+import '../utils/app_logger.dart';
 
 /// Servizio per comunicare con VLC tramite interfaccia HTTP
 /// Richiede che VLC sia configurato con una password.
 class VlcHttpService {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'VlcHttpService';
+
   /// Client condiviso: `http.get` di primo livello crea e chiude un client
   /// nuovo a ogni chiamata, quindi ogni richiesta del polling (una al secondo)
   /// apriva e chiudeva una connessione TCP. Con un client condiviso la
@@ -134,7 +138,7 @@ class VlcHttpService {
           // I metadati (trama, voto, poster) sono opzionali: un errore qui non
           // deve far fallire la lettura dello stato, ma non deve nemmeno
           // sparire silenziosamente.
-          print('[VlcHttpService] Metadati non disponibili: $e');
+          AppLogger.w(_tag, 'Metadati non disponibili', e);
         }
 
         return VlcStatus(
@@ -150,7 +154,7 @@ class VlcHttpService {
         );
       }
     } catch (e) {
-      print('[VlcHttpService] Errore getStatus: $e');
+      AppLogger.w(_tag, 'Errore getStatus', e);
     }
     return null;
   }
@@ -192,7 +196,7 @@ class VlcHttpService {
         return playlistItems;
       }
     } catch (e) {
-      print('[VlcHttpService] Errore getPlaylist: $e');
+      AppLogger.w(_tag, 'Errore getPlaylist', e);
     }
     return [];
   }
@@ -220,7 +224,7 @@ class VlcHttpService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('[VlcHttpService] Errore invio comando $command: $e');
+      AppLogger.w(_tag, 'Errore invio comando $command', e);
       return false;
     }
   }

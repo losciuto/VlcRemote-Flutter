@@ -13,6 +13,7 @@ import '../services/vlc_http_service.dart';
 import '../services/connection_service.dart';
 import '../services/my_playlist_service.dart';
 import '../services/settings_service.dart';
+import '../utils/app_logger.dart';
 
 /// Provider per gestire lo stato dell'applicazione VLC Remote
 ///
@@ -21,6 +22,9 @@ import '../services/settings_service.dart';
 /// interrogare VLC e a ricostruire la UI mentre l'utente e' su un'altra app,
 /// consumando batteria e traffico di rete per niente.
 class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'VlcProvider';
+
   /// I servizi sono iniettabili perché il provider, senza, non è testabile
   /// quando è connesso: crea da sé le proprie dipendenze e non accetta un
   /// socket finto, quindi un test che volesse provare il polling o la
@@ -230,8 +234,9 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
         if (!_vlcService.isConnected) {
           // Se non siamo connessi, tentiamo la riconnessione.
           if (_reconnectAttempts >= AppConstants.maxRetries) {
-            print(
-              '[VlcProvider] Riconnessione fallita troppe volte, fermo il timer.',
+            AppLogger.w(
+              _tag,
+              'Riconnessione fallita troppe volte, fermo il timer.',
             );
             timer.cancel();
             _statusUpdateTimer = null;
@@ -249,12 +254,13 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
           }
           _statusUpdateRetries = 0; // Reset su successo
         } catch (e) {
-          print('[VlcProvider] Errore aggiornamento stato: $e');
+          AppLogger.w(_tag, 'Errore aggiornamento stato', e);
           _statusUpdateRetries++;
 
           if (_statusUpdateRetries >= AppConstants.maxRetries) {
-            print(
-              '[VlcProvider] Troppi errori consecutivi, tento riconnessione.',
+            AppLogger.w(
+              _tag,
+              'Troppi errori consecutivi, tento riconnessione.',
             );
             await _attemptAutoReconnect();
             _statusUpdateRetries = 0;
@@ -286,8 +292,9 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
               AppConstants.reconnectBackoffMaxMs,
             );
 
-    print(
-      '[VlcProvider] Tentativo riconnessione #${_reconnectAttempts + 1} tra ${delay}ms',
+    AppLogger.d(
+      _tag,
+      'Tentativo riconnessione #${_reconnectAttempts + 1} tra ${delay}ms',
     );
     await Future.delayed(Duration(milliseconds: delay));
 
@@ -295,12 +302,10 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
 
     if (success) {
       _reconnectAttempts = 0;
-      print('[VlcProvider] Riconnessione riuscita');
+      AppLogger.i(_tag, 'Riconnessione riuscita');
     } else {
       _reconnectAttempts++;
-      print(
-        '[VlcProvider] Riconnessione fallita, tentativo $_reconnectAttempts',
-      );
+      AppLogger.d(_tag, 'Riconnessione fallita, tentativo $_reconnectAttempts');
     }
 
     _isReconnecting = false;
@@ -388,9 +393,9 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     try {
       await _updateStatus();
     } on VlcRemoteException catch (e) {
-      print('[VlcProvider] Stato non aggiornato: $e');
+      AppLogger.w(_tag, 'Stato non aggiornato', e);
     } catch (e) {
-      print('[VlcProvider] Errore durante l\'aggiornamento dello stato: $e');
+      AppLogger.w(_tag, 'Errore durante l\'aggiornamento dello stato', e);
     }
   }
 
@@ -407,7 +412,7 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     _isRefreshingPlaylist = true;
 
     try {
-      print('[VlcProvider] Aggiornamento playlist in corso...');
+      AppLogger.d(_tag, 'Aggiornamento playlist in corso...');
       List<PlaylistItem> newPlaylist = [];
 
       // Prova prima tramite HTTP
@@ -421,16 +426,14 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
       }
 
       _playlist = newPlaylist;
-      print(
-        '[VlcProvider] Playlist aggiornata: ${newPlaylist.length} elementi',
-      );
+      AppLogger.d(_tag, 'Playlist aggiornata: ${newPlaylist.length} elementi');
       notifyListeners();
     } on VlcRemoteException catch (e) {
       // Collegamento perso: lasciamo la playlist precedente invece di
       // svuotarla, così la UI non perde la traccia corrente.
-      print('[VlcProvider] Playlist non aggiornata: $e');
+      AppLogger.w(_tag, 'Playlist non aggiornata', e);
     } catch (e) {
-      print('Errore durante l\'aggiornamento della playlist: $e');
+      AppLogger.w(_tag, 'Errore durante l\'aggiornamento della playlist', e);
     } finally {
       _isRefreshingPlaylist = false;
     }
@@ -531,7 +534,7 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     // Recupera l'elemento dalla playlist usando l'indice visuale
     if (index >= 0 && index < _playlist.length) {
       final item = _playlist[index];
-      print('[VlcProvider] Go to item: ${item.title} (ID: ${item.id})');
+      AppLogger.d(_tag, 'Go to item: ${item.title} (ID: ${item.id})');
       await _vlcService.goto(item.id); // Usa l'ID interno di VLC
       await Future.delayed(Duration(milliseconds: 500));
       await _updateStatusQuietly();
@@ -666,8 +669,9 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     if (serverIp == null || serverIp.isEmpty) return null;
 
     if (!await _isLocalAddress(serverIp)) {
-      print(
-        '[VlcProvider] Server MyPlaylist su $serverIp: kill locale saltato, '
+      AppLogger.d(
+        _tag,
+        'Server MyPlaylist su $serverIp: kill locale saltato, '
         'il comando kill_vlc del server e\' gia\' stato eseguito.',
       );
       return null;
@@ -710,7 +714,7 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     } catch (e) {
       // Se non si puo' sapere, si assume remoto: il comportamento prudente e'
       // non uccidere processi dell'utente per errore.
-      print('[VlcProvider] Indirizzi locali non disponibili: $e');
+      AppLogger.w(_tag, 'Indirizzi locali non disponibili', e);
       return false;
     }
   }

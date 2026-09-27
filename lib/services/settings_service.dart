@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/filter_settings.dart';
+import '../utils/app_logger.dart';
 
 /// Servizio per gestire le impostazioni generali di VlcRemote
 class SettingsService {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'SettingsService';
   static const String _lastFilterSettingsKey = 'last_filter_settings';
 
   SharedPreferences? _prefs;
@@ -25,7 +28,7 @@ class SettingsService {
       final jsonString = jsonEncode(settings.toJson());
       return await _prefs!.setString(_lastFilterSettingsKey, jsonString);
     } catch (e) {
-      print('Errore durante il salvataggio dei filtri: $e');
+      AppLogger.w(_tag, 'Errore durante il salvataggio dei filtri', e);
       return false;
     }
   }
@@ -43,7 +46,7 @@ class SettingsService {
       final jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
       return FilterSettings.fromJson(jsonMap);
     } catch (e) {
-      print('Errore durante il caricamento dei filtri: $e');
+      AppLogger.w(_tag, 'Errore durante il caricamento dei filtri', e);
       return null;
     }
   }

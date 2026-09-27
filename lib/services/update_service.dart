@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart' as crypto;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../constants/app_constants.dart';
+import '../utils/app_logger.dart';
 
 /// Confronta due versioni semantiche.
 ///
@@ -95,6 +96,8 @@ class UpdateStart {
 }
 
 class UpdateService {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'UpdateService';
   static const String _repoUrl =
       'https://api.github.com/repos/losciuto/VlcRemote-Flutter/releases/latest';
 
@@ -122,7 +125,7 @@ class UpdateService {
         }
       }
     } catch (e) {
-      print('[UpdateService] Errore durante il controllo aggiornamenti: $e');
+      AppLogger.w(_tag, 'Errore durante il controllo aggiornamenti', e);
     }
     return null;
   }
@@ -285,7 +288,7 @@ class UpdateService {
       if (match == null) return null;
       return match.group(1)!.toLowerCase();
     } catch (e) {
-      print('[UpdateService] Impossibile leggere l\'impronta SHA-256: $e');
+      AppLogger.w(_tag, 'Impossibile leggere l\'impronta SHA-256', e);
       return null;
     }
   }

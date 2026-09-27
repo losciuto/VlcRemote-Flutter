@@ -3,9 +3,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../exceptions/vlc_exceptions.dart';
 import '../models/vlc_connection.dart';
 import 'secure_storage_service.dart';
+import '../utils/app_logger.dart';
 
 /// Servizio per gestire le connessioni VLC salvate
 class ConnectionService {
+  /// Tag usato nei log di questo servizio.
+  static const String _tag = 'ConnectionService';
   static const String _connectionsKey = 'vlc_connections';
   static const String _lastConnectionKey = 'last_connection_id';
 
@@ -53,7 +56,7 @@ class ConnectionService {
       // sfuggirebbe e arriverebbe come eccezione non gestita.
       return await _persist(connections);
     } catch (e) {
-      print('Errore durante il salvataggio della connessione: $e');
+      AppLogger.w(_tag, 'Errore durante il salvataggio della connessione', e);
       return false;
     }
   }
@@ -94,7 +97,7 @@ class ConnectionService {
 
           connections.add(await _withSecrets(connection, fromJson: json));
         } catch (e) {
-          print('Connessione scartata perché illeggibile: $e');
+          AppLogger.w(_tag, 'Connessione scartata perché illeggibile', e);
         }
       }
 
@@ -105,14 +108,19 @@ class ConnectionService {
         // restituirebbe una lista vuota, cioè tutte le connessioni sparite.
         try {
           await _persist(connections);
-          print(
-            '[ConnectionService] Segreti migrati in storage sicuro '
+          AppLogger.i(
+            _tag,
+            'Segreti migrati in storage sicuro '
             '(${connections.length} connessioni)',
           );
         } on SecretStoreException catch (e) {
-          print(
-            '[ConnectionService] Migrazione dei segreti non riuscita, i '
-            'segreti restano in chiaro nelle preferenze: $e',
+          // Segnaliamo l'esito, ma l'errore non risale: la migrazione e' un
+          // tentativo e l'app continua a funzionare anche in chiaro.
+          AppLogger.w(
+            _tag,
+            'Migrazione dei segreti non riuscita, i segreti restano '
+            'in chiaro nelle preferenze',
+            e,
           );
         }
       }
@@ -120,7 +128,7 @@ class ConnectionService {
       _cache = List.of(connections);
       return List.of(connections);
     } catch (e) {
-      print('Errore durante il caricamento delle connessioni: $e');
+      AppLogger.w(_tag, 'Errore durante il caricamento delle connessioni', e);
       return [];
     }
   }
@@ -239,7 +247,7 @@ class ConnectionService {
 
       return await _persist(connections);
     } catch (e) {
-      print('Errore durante l\'eliminazione della connessione: $e');
+      AppLogger.w(_tag, 'Errore durante l\'eliminazione della connessione', e);
       return false;
     }
   }
@@ -258,7 +266,11 @@ class ConnectionService {
 
       return await _persist(connections);
     } catch (e) {
-      print('Errore durante l\'aggiornamento della data di utilizzo: $e');
+      AppLogger.w(
+        _tag,
+        'Errore durante l\'aggiornamento della data di utilizzo',
+        e,
+      );
       return false;
     }
   }
@@ -277,7 +289,7 @@ class ConnectionService {
 
       return await _persist(connections);
     } catch (e) {
-      print('Errore durante il toggle del preferito: $e');
+      AppLogger.w(_tag, 'Errore durante il toggle del preferito', e);
       return false;
     }
   }
@@ -288,7 +300,11 @@ class ConnectionService {
       await updateLastUsed(id);
       return await _prefs!.setString(_lastConnectionKey, id);
     } catch (e) {
-      print('Errore durante il salvataggio dell\'ultima connessione: $e');
+      AppLogger.w(
+        _tag,
+        'Errore durante il salvataggio dell\'ultima connessione',
+        e,
+      );
       return false;
     }
   }
@@ -298,7 +314,11 @@ class ConnectionService {
     try {
       return _prefs!.getString(_lastConnectionKey);
     } catch (e) {
-      print('Errore durante il caricamento dell\'ultima connessione: $e');
+      AppLogger.w(
+        _tag,
+        'Errore durante il caricamento dell\'ultima connessione',
+        e,
+      );
       return null;
     }
   }
@@ -317,7 +337,11 @@ class ConnectionService {
             : throw Exception('No connections'),
       );
     } catch (e) {
-      print('Errore durante il caricamento dell\'ultima connessione: $e');
+      AppLogger.w(
+        _tag,
+        'Errore durante il caricamento dell\'ultima connessione',
+        e,
+      );
       return null;
     }
   }
@@ -337,7 +361,7 @@ class ConnectionService {
       _cache = null;
       return true;
     } catch (e) {
-      print('Errore durante la pulizia delle connessioni: $e');
+      AppLogger.w(_tag, 'Errore durante la pulizia delle connessioni', e);
       return false;
     }
   }
