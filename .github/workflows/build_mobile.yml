@@ -78,3 +78,19 @@ jobs:
           fail_on_unmatched_files: false
           generate_release_notes: true
 
+      # L'aggiornatore integrato rifiuta di installare un APK di cui non puo'
+      # verificare l'origine: senza questo file l'update automatico fallisce.
+      # GitHub non calcola le impronte, quindi le calcoliamo qui.
+      - name: Calcola l'impronta SHA-256
+        run: sha256sum app-release.apk > app-release.apk.sha256
+
+      - name: Allega l'impronta alla release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          # --repo: questo passaggio non ha una copia git, senza gh non sa
+          # a quale repository appartiene la release.
+          gh release upload "$TAG" app-release.apk.sha256 \
+            --repo "${{ github.repository }}" --clobber
+
