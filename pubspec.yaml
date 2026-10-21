@@ -2,7 +2,7 @@ name: vlc_remote_flutter
 description: "Telecomando remoto per VLC Media Player - Versione Flutter migliorata"
 publish_to: "none"
 
-version: 2.7.5+1
+version: 2.8.0+2
 
 environment:
   sdk: ^3.10.3
@@ -39,11 +39,22 @@ dependencies:
   cryptography: ^2.9.0
   crypto: ^3.0.6
   flutter_secure_storage: ^10.3.4
+  path: ^1.9.0
+
+  # Comandi vocali
+  #
+  # vosk_flutter_fixed e' il pacchetto con il build Linux/Windows
+  # corretto: vosk_flutter_service 0.1.2 usa ancora il vecchio nome del
+  # plugin nel CMake e nella CLI di installazione, quindi la build fallisce.
+  # record 6.x e' l'ultima compatibile con Dart 3.10: la 7.x richiede 3.12.
+  vosk_flutter_fixed: ^0.1.4
+  record: ^6.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
   mockito: ^5.6.4

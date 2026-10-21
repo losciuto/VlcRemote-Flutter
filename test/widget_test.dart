@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:vlc_remote_flutter/main.dart';
+import 'package:vlc_remote_flutter/services/settings_service.dart';
 
 void main() {
   testWidgets('VLC Remote app smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const VlcRemoteApp());
+    await tester.pumpWidget(VlcRemoteApp(settingsService: SettingsService()));
 
     // Verify that the app title is present
     expect(find.text('VLC Remote'), findsOneWidget);

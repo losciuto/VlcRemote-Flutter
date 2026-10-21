@@ -81,10 +81,37 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // JNA come dipendenza diretta: le classi Java e libjnidispatch.so devono
+    // essere esattamente della stessa versione, altrimenti Native.initIDs()
+    // crasha su Android recente con UnsatisfiedLinkError su com.sun.jna.Pointer.
+    implementation("net.java.dev.jna:jna:5.15.0@aar")
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("net.java.dev.jna:jna:5.15.0")
+    }
+}
+
+android {
+    packagingOptions {
+        // Una sola copia di libjnidispatch.so nell'APK, per evitare mismatch
+        // tra le classi JNA e la libreria nativa.
+        pickFirst("**/libjnidispatch.so")
+    }
 }

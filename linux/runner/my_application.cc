@@ -1,5 +1,7 @@
 #include "my_application.h"
 
+#include <stdlib.h>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -86,6 +88,27 @@ static void my_application_activate(GApplication* application) {
   set_window_icon(window);
 
   gtk_window_set_default_size(window, 1280, 720);
+
+  // Libreria nativa di Vosk, usata dai comandi vocali.
+  //
+  // Il plugin la cerca tramite la variabile d'ambiente LIBVOSK_PATH. La
+  // impongo qui, prima che l'engine avvii la VM Dart: Dart legge
+  // l'ambiente una volta sola al primo accesso, quindi la variabile deve
+  // esistere gia' quando parte l'applicazione.
+  {
+    g_autofree gchar* vosk_exe_path =
+        g_file_read_link("/proc/self/exe", nullptr);
+    if (vosk_exe_path != nullptr) {
+      // La libreria e' nella cartella "lib" accanto all'eseguibile, quindi
+      // serve la directory del binario e non l'intero percorso del file.
+      g_autofree gchar* vosk_exe_dir = g_path_get_dirname(vosk_exe_path);
+      g_autofree gchar* libvosk_path =
+          g_build_filename(vosk_exe_dir, "lib", "libvosk.so", nullptr);
+      if (g_file_test(libvosk_path, G_FILE_TEST_EXISTS)) {
+        setenv("LIBVOSK_PATH", libvosk_path, 0);
+      }
+    }
+  }
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(

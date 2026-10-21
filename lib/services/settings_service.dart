@@ -8,6 +8,8 @@ class SettingsService {
   /// Tag usato nei log di questo servizio.
   static const String _tag = 'SettingsService';
   static const String _lastFilterSettingsKey = 'last_filter_settings';
+  static const String _voiceLanguageKey = 'voice_language';
+  static const String _voiceInputDeviceKey = 'voice_input_device';
 
   SharedPreferences? _prefs;
 
@@ -49,5 +51,25 @@ class SettingsService {
       AppLogger.w(_tag, 'Errore durante il caricamento dei filtri', e);
       return null;
     }
+  }
+
+  /// Lingua del riconoscimento vocale: null significa la lingua predefinita.
+  String? get voiceLanguage => _prefs?.getString(_voiceLanguageKey);
+
+  /// Salva la lingua del riconoscimento vocale.
+  Future<bool> setVoiceLanguage(String? code) async {
+    if (_prefs == null) return false;
+    if (code == null) return await _prefs!.remove(_voiceLanguageKey);
+    return await _prefs!.setString(_voiceLanguageKey, code);
+  }
+
+  /// Id del microfono scelto per i comandi vocali.
+  String? get voiceInputDevice => _prefs?.getString(_voiceInputDeviceKey);
+
+  /// Salva il microfono scelto per i comandi vocali.
+  Future<bool> setVoiceInputDevice(String? deviceId) async {
+    if (_prefs == null) return false;
+    if (deviceId == null) return await _prefs!.remove(_voiceInputDeviceKey);
+    return await _prefs!.setString(_voiceInputDeviceKey, deviceId);
   }
 }

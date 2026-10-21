@@ -30,6 +30,7 @@ A cross-platform Flutter application to control VLC Media Player remotely over y
 - ✅ **Kill VLC**: Force-stop all VLC instances (local and remote)
 - ✅ **Playlist Preview**: View generated playlist titles before starting playback (integrated with MyPlaylist)
 - ✅ **Robust Sync**: Server echo cancellation for consistently accurate data
+- ✅ **Offline Voice Commands**: Control VLC and playlists by voice, with on-device recognition (Vosk): the audio never leaves the device
 
 ### 🚀 Improvements Over Original
 #### 🎨 Modern UI/UX
@@ -56,7 +57,14 @@ A cross-platform Flutter application to control VLC Media Player remotely over y
 - ✅ Linux
 - ✅ Windows
 - ✅ macOS
-- ✅ Web
+
+The **web build is not supported** and never has been: the app talks to VLC and
+to MyPlaylist over raw TCP sockets, which the browser does not have. Making it
+work would mean rewriting the MyPlaylist server side over WebSocket, changing
+the protocol and invalidating the clients already installed: not something
+that can be done from this app. The `web/` folder stays in the repository
+because `flutter create` generates it and it does no harm, but
+`flutter build web` produces nothing usable.
 
 ---
 
@@ -69,6 +77,13 @@ A cross-platform Flutter application to control VLC Media Player remotely over y
 ### For VLC
 - VLC Media Player installed on the computer
 - Local network (same WiFi/LAN)
+
+### For voice commands (optional)
+- A **microphone** accessible to the system (on Linux the user needs access to
+  PipeWire/PulseAudio)
+- About **40-50 MiB** of space for the Vosk model, downloaded on first use
+- On Android the app asks for the audio recording permission: it is optional,
+  so the app stays installable on devices without a microphone
 
 ---
 
@@ -158,6 +173,37 @@ Once connected, you can:
 - 📊 **Seek**: Scroll through the video timeline
 - 📝 **Playlist**: View and select tracks (in development)
 
+### 5. Voice commands
+
+The microphone icon in the top bar opens the voice commands panel.
+
+1. On first use the panel **downloads the Vosk model** for the selected
+   language (Italian or English, about 40-50 MiB). The model stays on the
+   device and is not downloaded again.
+2. Press the microphone button to start listening: the panel shows the input
+   audio level, so it is immediately visible whether the microphone is
+   capturing anything.
+3. Speak, and the command is executed; the outcome is listed in the history at
+   the bottom of the panel.
+
+The recognized commands are play, pause, stop, next and previous track,
+volume (up, down, numeric value), seeking forward and backward by N seconds,
+and the three playlist actions of MyPlaylist (random list, recent list, play
+the current list).
+
+Recognition is **keyword based**, not natural language: "raise the volume" is
+recognized, "could you raise the volume a bit" is not. The full catalogue is
+listed inside the panel and in
+[`docs/VOICE_COMMANDS.md`](docs/VOICE_COMMANDS.md).
+
+| Platform | Voice commands |
+|---|---|
+| Linux, Android, Windows | supported |
+| macOS | not supported: the Vosk plugin does not expose the native interface |
+
+Audio is recognized **on-device**: nothing is sent to an external service. The
+only network access is the model download, on first use.
+
 ---
 
 ## 🔧 VLC Configuration
@@ -195,7 +241,13 @@ lib/
 │   └── playlist_item.dart
 ├── services/                 # Business logic services
 │   ├── vlc_service.dart
-│   └── connection_service.dart
+│   ├── connection_service.dart
+│   └── voice/                # Offline voice commands (Vosk)
+│       ├── voice_language.dart
+│       ├── voice_command.dart
+│       ├── voice_command_parser.dart
+│       ├── voice_command_service.dart
+│       └── voice_command_executor.dart
 ├── providers/                # State management
 │   └── vlc_provider.dart
 ├── screens/                  # Screens
@@ -204,7 +256,8 @@ lib/
     ├── connection_dialog.dart
     ├── control_panel.dart
     ├── now_playing_card.dart
-    └── playlist_panel.dart
+    ├── playlist_panel.dart
+    └── voice_panel.dart
 ```
 
 ---
@@ -223,6 +276,17 @@ flutter build linux --release
 #### Windows
 ```bash
 flutter build windows --release
+```
+
+### Testing
+```bash
+flutter test
+```
+
+The voice commands integration test needs a device (or a graphical session) and
+runs separately:
+```bash
+flutter test integration_test/voice_panel_test.dart -d linux
 ```
 
 ---

@@ -112,6 +112,90 @@ esclusi, altrimenti al ripristino su un altro telefono i dati cifrati sarebbero
 illeggibili (le chiavi non ci sono) o, nel caso di versioni vecchie dell'app, i
 segreti in chiaro finirebbero su Google Drive.
 
+## Comandi vocali offline (Vosk)
+
+La feature dei **comandi vocali** e' tracciata in `docs/VOICE_COMMANDS.md` (progettazione,
+stato, rollback) e nel TODO (Fase 6). Se la modifichi, aggiorna entrambi.
+
+Stato attuale (sessione 2026-10-21):
+
+- Implementato: `lib/services/voice/` (motore, parser, catalogo, esecutore),
+  `lib/widgets/voice_panel.dart`, `lib/screens/home_screen.dart` (tasto microfono
+  nell'AppBar), `lib/main.dart` (composition root), `lib/services/settings_service.dart`
+  (`voiceLanguage`, `voiceInputDevice`), integrazione nativa Linux/Android/macOS/Windows.
+- Test: `test/voice_command_parser_test.dart`, `test/voice_command_service_test.dart`,
+  `test/voice_panel_test.dart`, `integration_test/voice_panel_test.dart`.
+- Trigger abbreviati (IT/EN) in `lib/services/voice/voice_command_parser.dart`:
+  volume / alza / abbassa / casuale / recenti / avvia / successiva /
+  precedente / avanti / indietro / pausa / continua / stop (IT) e volume /
+  up / down / random / shuffle / recent / latest / start / next / previous /
+  forward / backward / pause / resume / stop (EN).
+- Verifiche: `flutter analyze` OK (0 problemi), `flutter test` OK (244 passati),
+  `flutter build linux --release` OK, `flutter build apk --release` OK (90,1 MB).
+- Crash JNA su Android 16: **risolto**. Cause e fix:
+  - `android/app/build.gradle.kts`: `implementation("net.java.dev.jna:jna:5.15.0@aar)`,
+    `resolutionStrategy.force("net.java.dev.jna:jna:5.15.0")`,
+    `packagingOptions.pickFirst("**/libjnidispatch.so")`,
+    `isMinifyEnabled = true` + `isShrinkResources = true` con
+    `proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")`.
+  - `android/app/proguard-rules.pro`: `-keep` per `com.sun.jna.**` e `org.vosk.**`,
+    `-dontwarn` per `com.sun.jna.**` e `java.awt.**` (classi AWT inesistenti su Android).
+  - `MainActivity.kt`: `System.loadLibrary("jnidispatch")` prima che Vosk iniziializzi.
+  - `lib/services/voice/voice_command_service.dart`: `startListening()` chiama
+    `recorder.hasPermission(request: true)` per richiedere il permesso microfono a runtime.
+- Test su telefono fisico (Xiaomi MediaTek arm64-v8a, Android 16): app avviata, pannello
+  vocale aperto, microfono attivato, Vosk carica `vosk-model-small-it-0.22`, nessun crash.
+- Build release con ProGuard: OK (85,7 MB, stessa dimensione della build senza minify).
+- Branch: `feat/comandi-vocali` su entrambi i progetti; `main` resta pulito. Modifiche
+  non committate (in attesa di richiesta esplicita).
+
+```
+lib/services/voice/     motore, parser, catalogo, esecutore
+lib/widgets/voice_panel.dart  pannello (aperto dall'AppBar)
+```
+
+Regole di questa parte del codice:
+
+1. **Il motore non conosce `VlcProvider`.** Riceve un `VoiceCommandExecutor`:
+   cosi' il riconoscimento si prova con un esecutore finto, senza aprire una
+   socket e senza toccare VLC. `VlcVoiceCommandExecutor` riusa i metodi gia'
+   presenti nel provider e **non aggiunge side effect** al provider stesso.
+2. **Il riconoscimento e' offline.** L'audio non deve uscire dal dispositivo:
+   niente servizi cloud, niente rete tranne il download del modello.
+3. **Niente `flutter gen-l10n`.** Le stringhe sono in italiano e scritte a
+   mano, come nel resto del progetto.
+4. **Il contratto con MyPlaylist non si tocca.** I comandi vocali agiscono
+   dall'esterno, con gli stessi metodi che usa la UI.
+
+### Due dettagli che rompono la build se li si tocca
+
+- **Linux, intestazioni del plugin.** Il pacchetto pubblica le intestazioni in
+  `linux/include/vosk_flutter/`, il registrant generato dal tool Flutter le
+  cerca in `vosk_flutter_fixed/vosk_flutter_plugin.h`. La copia e' fatta in
+  `linux/CMakeLists.txt`: senza, la compilazione fallisce.
+- **Linux, percorso di `libvosk.so`.** Il plugin cerca la libreria nativa in
+  `LIBVOSK_PATH`. Dart legge l'ambiente **una volta sola**, al primo accesso:
+  la variabile va impostata **prima** che la VM Dart parta, quindi in
+  `linux/runner/my_application.cc` e non a runtime.
+
+Dipendenze: `vosk_flutter_fixed` (non `vosk_flutter_service`, che usa ancora
+il vecchio nome del plugin nel CMake e non compila) e `record` 6.x (la 7.x
+richiede Dart 3.12).
+
+### Test
+
+I test di integrazione stanno in `integration_test/` e **non** girano con il
+semplice `flutter test` (che esegue solo `test/`): servono un dispositivo o
+una sessione grafica.
+
+```bash
+flutter test integration_test/voice_panel_test.dart -d linux
+```
+
+I click manuali su X11 non sono affidabili, perche' il gestore delle finestre
+sposta la finestra dell'app sul secondo monitor: il test di integrazione e' il
+riferimento.
+
 ## Secret key MyPlaylist: lunghezza
 
 La chiave AES è derivata dal secret key con **zero-padding o troncamento a 32

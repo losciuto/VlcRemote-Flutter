@@ -10,6 +10,7 @@ import 'package:vlc_remote_flutter/widgets/info_dialog.dart';
 import 'package:vlc_remote_flutter/widgets/now_playing_card.dart';
 import 'package:vlc_remote_flutter/widgets/status_bar.dart';
 import 'package:vlc_remote_flutter/widgets/update_dialog.dart';
+import 'package:vlc_remote_flutter/widgets/voice_panel.dart';
 
 /// La schermata principale.
 ///
@@ -86,6 +87,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     : 'Non connesso',
               );
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.mic_none),
+            onPressed: () => showVoicePanel(context),
+            tooltip: 'Comandi vocali',
           ),
           IconButton(
             icon: const Icon(Icons.info_outline),

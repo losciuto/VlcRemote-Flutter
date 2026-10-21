@@ -341,6 +341,32 @@ Il motivo e' che il ciclo dura quanto il periodo di silenzio (500 ms), quindi gi
 | 6.7 | `SafeArea` assente ovunque; `Tooltip`/`Semantics` mancanti sui controlli principali | `home_screen.dart`, `control_panel.dart`, `connections/connection_card.dart` | Basso | ok | **fatto** |
 | 6.8 | Costanti hardcoded (`?? 8080` ripetuto 7 volte, `'8000'` 3 volte) sostituite da `AppConstants` | `app_constants.dart`, 3 file | Basso | ok | **fatto** |
 
+### Fase 6 — Comandi vocali offline (Vosk)
+
+Funzionalita' **additiva**, lato client: il contratto con il server MyPlaylist
+(C1-C13) non e' toccato e `VlcProvider` non ha side effect nuovi. La
+progettazione e' in [`VOICE_COMMANDS.md`](VOICE_COMMANDS.md).
+
+| # | Cosa | File | Sev | Impatto server | Stato |
+|---|---|---|---|---|---|
+| 7.1 | Motore vocale offline: modello Vosk, cattura audio, riconoscimento, cronologia | `lib/services/voice/voice_command_service.dart` | Alto | ok | **fatto** (portato da MyPlaylist) |
+| 7.2 | Parser: frase -> comando, regole per lingua, numeri in cifre e in parole | `lib/services/voice/voice_command_parser.dart` | Alto | ok | **fatto** (portato da MyPlaylist) |
+| 7.3 | Catalogo dei comandi: playback, volume, seek, playlist | `lib/services/voice/voice_command.dart` | Alto | ok | **fatto** |
+| 7.4 | Esecutore che riusa i comandi gia' presenti nel provider | `lib/services/voice/voice_command_executor.dart` | Alto | ok | **fatto** (nessun side effect nuovo nel provider) |
+| 7.5 | Pannello: modello, lingua, microfono, livello audio, cronologia, elenco comandi | `lib/widgets/voice_panel.dart` | Medio | ok | **fatto** (aperto dall'AppBar) |
+| 7.6 | Impostazioni di lingua e microfono | `lib/services/settings_service.dart` | Basso | ok | **fatto** (`voice_language`, `voice_input_device`) |
+| 7.7 | Integrazione nativa Linux: intestazioni del plugin e percorso di `libvosk.so` | `linux/CMakeLists.txt`, `linux/runner/my_application.cc` | Alto | ok | **fatto** (shim + `LIBVOSK_PATH` prima della VM Dart) |
+| 7.8 | Permessi Android per il microfono, opzionali | `android/app/src/main/AndroidManifest.xml` | Medio | ok | **fatto** (`RECORD_AUDIO`, microfono non obbligatorio) |
+| 7.9 | Test di parser, motore, pannello e integrazione reale | `test/voice_*.dart`, `integration_test/voice_panel_test.dart` | Alto | ok | **fatto** (244 test + 1 integrazione) |
+| 7.10 | macOS: il plugin Vosk non espone l'interfaccia nativa | — | Medio | ok | **aperto**: il pannello segnala la piattaforma non supportata |
+| 7.11 | CI con test di integrazione (serve un runner con display) | `.github/workflows/` | Basso | ok | **aperto**: `flutter test` non gira `integration_test/` |
+| 7.12 | Documentazione della feature | `docs/VOICE_COMMANDS.md`, README, CHANGELOG, AGENTS | Basso | ok | **fatto** |
+
+La scelta di portare il codice da MyPlaylist invece di riscriverlo e' motivata
+dal fatto che motore, parser e catalogo sono gia' verificati: quello che
+cambia qui e' solo l'esecutore, che agisce sul `VlcProvider` invece che su un
+client RC proprio. La decisione e' registrata in D12.
+
 ---
 
 ## 2. Decisioni aperte — le tue domande
@@ -360,6 +386,8 @@ Compila questa sezione man mano che ne parliamo, così non le perdiamo.
 | D9 | **6.4 - Versione.** Il CHANGELOG documenta 2.7.5 (25/09/2026) ma `pubspec.yaml` e' ancora 2.7.4+1 e il README 2.7.4. Si porta `pubspec` a 2.7.5+1 e si aggiorna il README, oppure 2.7.5 non e' ancora stata rilasciata? | bump 2.7.5 / rimandare | **bump 2.7.5**: `pubspec` a 2.7.5+1, README allineato, CHANGELOG aggiornato. Le tre letture non possono piu' divergere, perche' 5.9 fa prendere la versione a `pubspec.yaml` | 2026-09-27 |
 | D10 | **3.14 — Tempo di reazione al fallback.** Con VLC connesso ma morto, il primo retry arriva dopo ~22 s. Ridurre i timeout RC (ora 1,5 s × 5 comandi) o fare un probe veloce di connettivita' prima dello stato completo? | ridurre timeout / probe veloce / lasciare cosi' | **probe, ma non una sonda TCP**: il probe e' il comando `status`, che va per primo e, se tace, evita gli altri quattro. Timeout invariati, perche' accorciarli peggiorerebbe il caso normale su rete lenta per far migliorare uno raro | 2026-09-27 |
 | D11 | **1.0 — Come si autentica git su questa macchina dopo il 27/09.** Il token era dentro l'URL del remote. Ora e' `gh` che risponde a git, col token nel keyring. Va documentato, perche' se `gh` viene disinstallato o il keyring non parte, i push falliscono e il motivo non e' ovvio | `gh` + keyring / PAT nel remote / `~/.netrc` | **`gh` + keyring**, e questa risposta chiude anche 1.0: il token non e' piu' nel progetto e si ruota con `gh auth refresh` invece che a mano sul web. Se un domani i push smettono di funzionare, il primo controllo e' `gh auth status` | 2026-09-27 |
+| D12 | **Comandi vocali offline.** Portare l'implementazione gia' fatta in MyPlaylist, riscriverla da capo, o restare indietro? | portare / riscrivere / rimandare | **portare**: motore, parser e catalogo sono gia' verificati, quindi il lavoro qui si riduce all'esecutore (il `VlcProvider` al posto del client RC proprio) e all'integrazione nativa. Riconoscimento **offline** con Vosk: l'audio non lascia il dispositivo, e questa scelta e' il motivo per cui il catalogo e' a parole chiave e non a linguaggio naturale. Nessun impatto sul protocollo con MyPlaylist | 2026-10-20 |
+| D13 | **Dove tenere la documentazione della feature.** Nel TODO, in un documento separato, o solo nel codice? | TODO / separato / solo codice | **separato**: `docs/VOICE_COMMANDS.md` tiene la progettazione, i limiti e il rollback, mentre il TODO tiene solo la riga di stato. Il TODO e' un piano di refactoring, non un manuale: accoglierebbe una sezione che non e' un item di refactoring | 2026-10-20 |
 
 ---
 

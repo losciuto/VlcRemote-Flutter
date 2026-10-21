@@ -79,6 +79,22 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Intestazioni del plugin Vosk.
+#
+# Il plugin le pubblica in linux/include/vosk_flutter/, mentre il registrant
+# generato dal tool Flutter le cerca in
+# vosk_flutter_fixed/vosk_flutter_plugin.h. Le copio nella cartella attesa,
+# cosi' la compilazione riesce senza modificare il pacchetto.
+set(VOSK_PLUGIN_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter/ephemeral/.plugin_symlinks/vosk_flutter_fixed/linux/include")
+if(EXISTS "${VOSK_PLUGIN_INCLUDE_DIR}/vosk_flutter/vosk_flutter_plugin.h")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/plugin_includes/vosk_flutter_fixed")
+  configure_file(
+    "${VOSK_PLUGIN_INCLUDE_DIR}/vosk_flutter/vosk_flutter_plugin.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/plugin_includes/vosk_flutter_fixed/vosk_flutter_plugin.h"
+    COPYONLY)
+  target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/plugin_includes")
+endif()
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build

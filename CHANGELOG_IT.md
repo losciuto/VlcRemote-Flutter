@@ -3,6 +3,46 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
+## [2.8.0] - 21/10/2026
+
+### Aggiunto
+- **Comandi vocali offline**: si puo' controllare VLC e le playlist MyPlaylist
+  a voce, con il riconoscimento fatto **in locale** (Vosk): l'audio del
+  microfono non lascia mai il dispositivo. L'icona del microfono nella barra in
+  alto apre il pannello, dove si vede lo stato del motore, il modello
+  scaricato, la lingua, il microfono scelto, il livello audio in ingresso e la
+  cronologia dei comandi con il rispettivo esito. I comandi riconosciuti sono
+  play, pausa, stop, traccia successiva e precedente, volume (su, giu, valore
+  numerico), spostamento nella traccia in avanti e indietro, e le tre azioni
+  sulle playlist (genera casuale, genera recenti, avvia la playlist corrente).
+  Il riconoscimento e' a parole chiave, non a linguaggio naturale, e i modelli
+  Vosk usati sono gli stessi della scheda "Voce" di MyPlaylist. La
+  progettazione e' in `docs/VOICE_COMMANDS.md`.
+- **Il percorso di `libvosk.so` viene risolto da solo su Linux**: il runner
+  indica al plugin dove si trova la libreria nativa prima che parta la VM
+  Dart, quindi non serve piu' configurare `LIBVOSK_PATH` a mano.
+- **Le intestazioni del plugin Vosk vengono copiate dal pacchetto**: senza
+  questa copia la build Linux falliva, perche' il registrant generato dal
+  tool Flutter cerca le intestazioni in un percorso diverso da quello in cui
+  il pacchetto le pubblica.
+
+### Modifiche
+- **Le impostazioni sono una sola istanza condivisa**: il provider le usa per
+  le sue, il motore vocale per lingua e microfono. Prima la stessa cache di
+  `SharedPreferences` poteva essere inizializzata due volte.
+- **Il microfono salvato che non esiste piu' non blocca l'avvio**: si torna al
+  microfono predefinito e la scelta viene rimossa dalle impostazioni. Il
+  backend PulseAudio restituisce gli id tra virgolette, e senza pulirli la
+  scelta non combaciava piu' con quella salvata.
+
+### Note
+- Il permesso `RECORD_AUDIO` su Android e' **opzionale**: l'app resta
+  installabile su dispositivi senza microfono.
+- **macOS non e' supportato** per i comandi vocali: il plugin Vosk non espone
+  l'interfaccia nativa, e il pannello lo segnala.
+- Nessuna modifica al protocollo con MyPlaylist: stessi pacchetti, stessi
+  comandi, stessa chiave.
+
 ## [2.7.5] - 27/09/2026
 
 Lavori di rifinitura, nessuno dei quali cambia il protocollo con MyPlaylist:

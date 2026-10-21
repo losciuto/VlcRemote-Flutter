@@ -34,6 +34,7 @@ Un'applicazione Flutter cross-platform per controllare VLC Media Player da remot
 - ✅ **Kill VLC**: Terminazione forzata di tutte le istanze VLC (locale e remota)
 - ✅ **Anteprima Playlist**: Visualizza i titoli della playlist generata prima di avviare la riproduzione (integrato con MyPlaylist)
 - ✅ **Sincronizzazione Robusta**: Cancellazione echi del server per dati sempre accurati
+- ✅ **Comandi Vocali Offline**: Controlla VLC e le playlist con la voce, con il riconoscimento fatto in locale (Vosk): l'audio non lascia mai il dispositivo
 
 ### 🚀 Miglioramenti Rispetto all'Originale
 
@@ -81,6 +82,13 @@ resta nel repository perche' la genera `flutter create` e non fa danno, ma
 ### Per VLC
 - VLC Media Player installato sul computer
 - Rete locale (stessa WiFi/LAN)
+
+### Per i comandi vocali (facoltativi)
+- Un **microfono** accessibile al sistema (su Linux serve un utente con
+  accesso a PipeWire/PulseAudio)
+- Circa **40-50 MiB** di spazio per il modello Vosk, scaricato al primo uso
+- Su Android l'app chiede il permesso di registrazione audio: e' facoltativo,
+  quindi l'app resta installabile su dispositivi senza microfono
 
 ---
 
@@ -180,6 +188,37 @@ Una volta connesso, puoi:
 - 📊 **Seek**: Scorri la timeline del video
 - 📝 **Playlist**: Visualizza e seleziona i brani (in sviluppo)
 
+### 5. Comandi vocali
+
+L'icona del microfono nella barra in alto apre il pannello dei comandi vocali.
+
+1. Al primo uso il pannello **scarica il modello Vosk** della lingua scelta
+   (italiano o inglese, circa 40-50 MiB). Il modello resta sul dispositivo e
+   non viene riscaricato.
+2. Con il pulsante del microfono si avvia l'ascolto: il pannello mostra il
+   livello audio in ingresso, cosi' si vede subito se il microfono sta
+   captando qualcosa.
+3. Si parla e il comando viene eseguito; l'esito finisce nella cronologia in
+   fondo al pannello.
+
+I comandi riconosciuti sono play, pausa, stop, traccia successiva e
+precedente, volume (su, giu, valore numerico), spostamento nella traccia in
+avanti e indietro di N secondi, e le tre azioni sulle playlist MyPlaylist
+(genera casuale, genera recenti, avvia la playlist corrente).
+
+Il riconoscimento e' **a parole chiave**, non a linguaggio naturale: "alza il
+volume" e' riconosciuto, "potresti alzare un po' il volume" no. Il catalogo
+completo e' elencato dentro il pannello e in
+[`docs/VOICE_COMMANDS.md`](docs/VOICE_COMMANDS.md).
+
+| Piattaforma | Comandi vocali |
+|---|---|
+| Linux, Android, Windows | supportati |
+| macOS | non supportati: il plugin Vosk non espone l'interfaccia nativa |
+
+L'audio viene riconosciuto **in locale**: non viene inviato a nessun servizio
+esterno. L'unica connessione di rete e' il download del modello, al primo uso.
+
 ---
 
 ## 🔧 Configurazione VLC
@@ -242,7 +281,13 @@ lib/
 │   └── playlist_item.dart
 ├── services/                 # Servizi business logic
 │   ├── vlc_service.dart
-│   └── connection_service.dart
+│   ├── connection_service.dart
+│   └── voice/                # Comandi vocali offline (Vosk)
+│       ├── voice_language.dart
+│       ├── voice_command.dart
+│       ├── voice_command_parser.dart
+│       ├── voice_command_service.dart
+│       └── voice_command_executor.dart
 ├── providers/                # State management
 │   └── vlc_provider.dart
 ├── screens/                  # Schermate
@@ -251,7 +296,8 @@ lib/
     ├── connection_dialog.dart
     ├── control_panel.dart
     ├── now_playing_card.dart
-    └── playlist_panel.dart
+    ├── playlist_panel.dart
+    └── voice_panel.dart
 ```
 
 ### Pattern Utilizzati
@@ -295,6 +341,12 @@ flutter build windows --release
 flutter test
 ```
 
+Il test di integrazione dei comandi vocali richiede un dispositivo (o un
+sessione grafica) e si esegue a parte:
+```bash
+flutter test integration_test/voice_panel_test.dart -d linux
+```
+
 ### Analisi Codice
 ```bash
 flutter analyze
@@ -309,6 +361,9 @@ flutter analyze
 - **http**: Comunicazione di rete (future)
 - **network_info_plus**: Informazioni rete
 - **intl**: Internazionalizzazione
+- **vosk_flutter_fixed**: Riconoscimento vocale offline (Vosk)
+- **record**: Cattura audio dal microfono
+- **path**: Composizione dei percorsi (cartella dei modelli)
 
 ---
 
