@@ -684,6 +684,75 @@ class VlcProvider with ChangeNotifier, WidgetsBindingObserver {
     );
   }
 
+  Future<Map<String, dynamic>> mpShowPoster() async {
+    if (!isMyPlaylistConfigured) {
+      return {
+        'status': 'error',
+        'message': 'MyPlaylist non configurato',
+      };
+    }
+
+    return await _myPlaylistService.showPoster(
+      _currentConnection!.myPlaylistIp!,
+      _currentConnection!.myPlaylistPort ??
+          AppConstants.defaultMyPlaylistPort,
+      _currentConnection!.myPlaylistSecretKey!,
+    );
+  }
+
+  Future<Map<String, dynamic>> mpClosePoster() async {
+    if (!isMyPlaylistConfigured) {
+      return {
+        'status': 'error',
+        'message': 'MyPlaylist non configurato',
+      };
+    }
+
+    return await _myPlaylistService.closePoster(
+      _currentConnection!.myPlaylistIp!,
+      _currentConnection!.myPlaylistPort ??
+          AppConstants.defaultMyPlaylistPort,
+      _currentConnection!.myPlaylistSecretKey!,
+    );
+  }
+
+  Future<Map<String, dynamic>> mpGetVlcKillTimer() async {
+    if (!isMyPlaylistConfigured) {
+      return {
+        'status': 'error',
+        'message': 'MyPlaylist non configurato',
+      };
+    }
+
+    return await _myPlaylistService.getVlcKillTimer(
+      _currentConnection!.myPlaylistIp!,
+      _currentConnection!.myPlaylistPort ??
+          AppConstants.defaultMyPlaylistPort,
+      _currentConnection!.myPlaylistSecretKey!,
+    );
+  }
+
+  Future<Map<String, dynamic>> mpSetVlcKillTimer({
+    required bool enabled,
+    required String time,
+  }) async {
+    if (!isMyPlaylistConfigured) {
+      return {
+        'status': 'error',
+        'message': 'MyPlaylist non configurato',
+      };
+    }
+
+    return await _myPlaylistService.setVlcKillTimer(
+      _currentConnection!.myPlaylistIp!,
+      _currentConnection!.myPlaylistPort ??
+          AppConstants.defaultMyPlaylistPort,
+      _currentConnection!.myPlaylistSecretKey!,
+      enabled: enabled,
+      time: time,
+    );
+  }
+
   /// Uccide i processi VLC **di questa macchina**.
   ///
   /// Va eseguito solo se il server MyPlaylist e' su questa stessa macchina: il

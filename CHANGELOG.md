@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.0] - 10/11/2026
+
+### Added
+- **Voice command "close" / "chiudi"**: new voice command to close the video poster when displayed. Available in Italian ("chiudi") and English ("close"). Implemented in both VlcRemote (voice panel) and MyPlaylist (Voice tab).
+- **Remote command `close_poster`**: added to MyPlaylist server and `mpClosePoster()` client method in VlcRemote.
+- **Documentation updated**: `docs/VOICE_COMMANDS.md` updated with the new command.
+
+### Notes
+- Voice command catalog aligned between VlcRemote and MyPlaylist.
+- Remote control protocol extended with `close_poster` command.
+
 ## [2.8.0] - 21/10/2026
 
 ### Added

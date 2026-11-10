@@ -468,6 +468,12 @@ class _Cronologia extends StatelessWidget {
         return 'Avanzamento di ${entry.number ?? 0} secondi';
       case VoiceFeedback.seekBackward:
         return 'Ritorno di ${entry.number ?? 0} secondi';
+      case VoiceFeedback.showPoster:
+        return 'Locandina visualizzata su MyPlaylist';
+      case VoiceFeedback.closePoster:
+        return 'Locandina chiusa su MyPlaylist';
+      case VoiceFeedback.posterNotAvailable:
+        return 'Locandina non disponibile';
       case VoiceFeedback.notRecognized:
         return 'Comando non riconosciuto';
       case VoiceFeedback.notExecuted:
@@ -497,7 +503,8 @@ class _ComandiDisponibili extends StatelessWidget {
           'traccia successiva / traccia precedente\n'
           'alza il volume / abbassa il volume / volume 50\n'
           'avanti 30 secondi / indietro 30 secondi\n'
-          'playlist casuale / playlist recenti / suona la playlist',
+          'playlist casuale / playlist recenti / suona la playlist\n'
+          'locandina / poster / chiudi / close',
           style: theme.textTheme.bodySmall,
         ),
       ],

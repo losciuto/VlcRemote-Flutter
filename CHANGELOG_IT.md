@@ -3,6 +3,17 @@
 Tutti i cambiamenti significativi a questo progetto saranno documentati in questo file.
 
 
+## [2.9.0] - 10/11/2026
+
+### Aggiunto
+- **Comando vocale "chiudi" / "close"**: nuovo comando vocale per chiudere la locandina del video quando è visualizzata. Disponibile in italiano ("chiudi") e inglese ("close"). Implementato sia in VlcRemote (pannello vocale) che in MyPlaylist (scheda Voce).
+- **Comando remoto `close_poster`**: aggiunto al server MyPlaylist e metodo client `mpClosePoster()` in VlcRemote.
+- **Documentazione aggiornata**: `docs/VOICE_COMMANDS.md` aggiornato con il nuovo comando.
+
+### Note
+- Catalogo comandi vocali allineato tra VlcRemote e MyPlaylist.
+- Protocollo di controllo remoto esteso con comando `close_poster`.
+
 ## [2.8.0] - 21/10/2026
 
 ### Aggiunto

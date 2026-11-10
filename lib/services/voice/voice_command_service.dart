@@ -574,6 +574,10 @@ class VoiceCommandService extends ChangeNotifier {
         return VoiceFeedback.seekForward;
       case VoiceCommandType.vlcSeekBackward:
         return VoiceFeedback.seekBackward;
+      case VoiceCommandType.showPoster:
+        return VoiceFeedback.showPoster;
+      case VoiceCommandType.closePoster:
+        return VoiceFeedback.closePoster;
     }
   }
 

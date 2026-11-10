@@ -88,6 +88,15 @@ class VlcVoiceCommandExecutor implements VoiceCommandExecutor {
 
       case VoiceCommandType.vlcSeekBackward:
         return _seek(command.number ?? 30, forward: false);
+      case VoiceCommandType.showPoster:
+        if (!provider.isMyPlaylistConfigured) return false;
+        final result = await provider.mpShowPoster();
+        return result['status'] == 'success';
+
+      case VoiceCommandType.closePoster:
+        if (!provider.isMyPlaylistConfigured) return false;
+        final closeResult = await provider.mpClosePoster();
+        return closeResult['status'] == 'success';
     }
   }
 

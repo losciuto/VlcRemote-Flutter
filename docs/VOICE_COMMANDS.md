@@ -140,6 +140,7 @@ dalla piu' specifica alla piu' generica.
 | Pausa | "pausa", "sospendi" | "pause" | — |
 | Riprendi | "riprendi", "riproduci", "continua" | "resume", "continue" | — |
 | Stop | "ferma", "ferma tutto", "chiudi vlc", "spegni vlc" | "stop", "close vlc" | — |
+| Chiudi locandina | "chiudi" | "close" | — |
 
 Dettagli del riconoscimento:
 
@@ -167,6 +168,7 @@ socket unica, stato della UI aggiornato come per un pulsante premuto a mano.
 | volume su/giu/valore | `volumeUp()`, `volumeDown()`, `setVolume()` | server VLC collegato |
 | spostamento nella traccia | `seekTo()` | server VLC collegato e `totalTime > 0` |
 | playlist casuale / recenti / avvio | `mpGenerateRandom()`, `mpGenerateRecent()`, `mpPlay()` | MyPlaylist configurato |
+| Chiudi locandina | `mpClosePoster()` | MyPlaylist configurato |
 
 Lo spostamento nella traccia e' l'unico caso non banale: il comando RC `seek`
 di VLC e' **assoluto**, quindi la posizione di partenza si legge dallo stato
@@ -333,6 +335,7 @@ tocato: il lavoro e' tutto sul branch `feat/comandi-vocali`.
       nel bundle) e `flutter build apk --release` (con `libvosk.so` per ogni
       ABI e `RECORD_AUDIO` nel manifest).
 - [x] Script di rollback scritto e provato.
+- [x] Comando vocale "chiudi" / "close" per chiudere la locandina (show_poster / close_poster).
 
 ### Cosa resta aperto
 

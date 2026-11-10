@@ -217,6 +217,53 @@ class MyPlaylistService {
   Future<Map<String, dynamic>> killVlc(String host, int port, String key) =>
       sendCommand(host: host, port: port, secretKey: key, command: 'kill_vlc');
 
+  Future<Map<String, dynamic>> showPoster(
+    String host,
+    int port,
+    String key,
+  ) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'show_poster',
+  );
+
+  Future<Map<String, dynamic>> closePoster(
+    String host,
+    int port,
+    String key,
+  ) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'close_poster',
+  );
+
+  Future<Map<String, dynamic>> getVlcKillTimer(
+    String host,
+    int port,
+    String key,
+  ) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'get_vlc_kill_timer',
+  );
+
+  Future<Map<String, dynamic>> setVlcKillTimer(
+    String host,
+    int port,
+    String key, {
+    required bool enabled,
+    required String time,
+  }) => sendCommand(
+    host: host,
+    port: port,
+    secretKey: key,
+    command: 'set_vlc_kill_timer',
+    args: {'enabled': enabled, 'time': time},
+  );
+
   Future<Map<String, dynamic>> generateFiltered(
     String host,
     int port,

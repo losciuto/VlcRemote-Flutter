@@ -5,6 +5,7 @@ import 'package:vlc_remote_flutter/models/vlc_connection.dart';
 import 'package:vlc_remote_flutter/providers/vlc_provider.dart';
 import 'package:vlc_remote_flutter/widgets/connections/connection_form.dart';
 import 'package:vlc_remote_flutter/widgets/connections/connection_list.dart';
+import 'package:vlc_remote_flutter/widgets/vlc_kill_timer_dialog.dart';
 
 /// Gestione dei server VLC: elenco dei server salvati, oppure modulo per
 /// aggiungerne o modificarne uno.
@@ -97,29 +98,50 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   Widget _intestazione(BuildContext context) {
-    return Row(
+    final provider = context.watch<VlcProvider>();
+    final isMpConfigured = provider.isMyPlaylistConfigured;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(
-          Icons.settings_input_antenna,
-          color: Theme.of(context).colorScheme.primary,
-          size: 28,
+        Row(
+          children: [
+            Icon(
+              Icons.settings_input_antenna,
+              color: Theme.of(context).colorScheme.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Gestione Server VLC',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: 'Chiudi',
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Gestione Server VLC',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        if (isMpConfigured) ...[
+          const SizedBox(height: 12),
+          const Divider(),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.timer),
+            label: const Text('Timer Spegnimento VLC'),
+            onPressed: () => showVlcKillTimerDialog(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
             ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: 'Chiudi',
-        ),
+        ],
       ],
     );
   }
