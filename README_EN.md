@@ -298,7 +298,7 @@ This project is released under the MIT License. See `LICENSE` for details.
 
 ## 👨‍💻 Author
 **losciuto**
-- Version: 2.7.5 (September 2026)
+- Version: 2.9.0 (10/11/2026)
 
 ---
 
